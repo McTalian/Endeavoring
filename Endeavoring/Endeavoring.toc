@@ -1,0 +1,25 @@
+## Interface: 120000, 120001
+## Title: Endeavoring
+## Author: McTalian
+## Version: @project-version@
+## Notes: Improvements to the Endeavors frame for your Neighborhood.
+## SavedVariables: EndeavoringDB
+## X-GitHub: https://github.com/Mctalian/RPGLootFeed
+## X-Discord: https://discord.gg/czRYVWhe33
+## X-Curse-Project-ID: 
+## X-WoWI-ID: 
+## X-Wago-ID: 
+
+#@no-lib-strip@
+#embeds.xml
+#@end-no-lib-strip@
+
+Bootstrap.lua
+Services/PlayerInfo.lua
+Data/Database.lua
+Services/NeighborhoodAPI.lua
+Features/Header.lua
+Features/Tasks.lua
+Integrations/HousingDashboard.lua
+Core.lua
+#locale/locales.xml

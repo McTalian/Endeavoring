@@ -1,0 +1,47 @@
+{
+  "Lua.runtime.version": "Lua 5.1",
+  "Lua.runtime.builtin": {
+    "basic": "disable",
+    "debug": "disable",
+    "io": "disable",
+    "math": "disable",
+    "os": "disable",
+    "package": "disable",
+    "string": "disable",
+    "table": "disable",
+    "utf8": "disable"
+  },
+  "Lua.workspace.library": [
+    "~/.vscode-server/extensions/ketho.wow-api-0.22.1/Annotations/Core"
+  ],
+  "Lua.diagnostics.globals": [
+    "PanelTemplates_SetNumTabs",
+    "PanelTemplates_SetTab",
+    "SlashCmdList",
+    "SOUNDKIT",
+    "GameTooltip_AddBlankLineToTooltip",
+    "GameTooltip_SetTitle",
+    "GameTooltip_AddNormalLine",
+    "FrameUtil",
+    "TabSystemOwnerMixin",
+    "ScrollUtil",
+    "GameTooltip_AddColoredLine",
+    "TextureKitConstants",
+    "GetCVarNumberOrDefault",
+    "CreateScrollBoxListTreeListView",
+    "CreateScrollBoxListLinearView",
+    "CreateTreeDataProvider",
+    "ScrollBoxConstants",
+    "GameTooltip_AddHighlightLine",
+    "GameTooltip_AddQuestRewardsToTooltip",
+    "GameTooltip_AddInstructionLine",
+    "ChatFrameUtil",
+    "MONTHLY_ACTIVITIES_UNTRACK",
+    "MONTHLY_ACTIVITIES_TRACK",
+    "CreateDataProvider",
+    "TreeDataProviderConstants",
+    "APIDocumentation",
+    "GameTooltip_Hide",
+    "HOUSING_DASHBOARD_TIME_REMAINING"
+  ]
+}
