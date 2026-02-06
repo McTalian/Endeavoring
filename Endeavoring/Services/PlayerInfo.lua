@@ -22,7 +22,11 @@ end
 --- Get character info for the current player
 --- @return table characterInfo Character information table with name and realm
 function PlayerInfo.GetCharacterInfo()
-  local name, realm = UnitNameUnmodified("player")
+	local name, realm = UnitNameUnmodified("player")
+	-- Fallback to GetNormalizedRealmName if realm is nil
+	if not realm or realm == "" then
+		realm = GetNormalizedRealmName()
+	end
 	return {
 		name = name,
 		realm = realm,

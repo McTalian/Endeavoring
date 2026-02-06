@@ -1,19 +1,4 @@
 {
-  "Lua.runtime.version": "Lua 5.1",
-  "Lua.runtime.builtin": {
-    "basic": "disable",
-    "debug": "disable",
-    "io": "disable",
-    "math": "disable",
-    "os": "disable",
-    "package": "disable",
-    "string": "disable",
-    "table": "disable",
-    "utf8": "disable"
-  },
-  "Lua.workspace.library": [
-    "~/.vscode-server/extensions/ketho.wow-api-0.22.1/Annotations/Core"
-  ],
   "Lua.diagnostics.globals": [
     "PanelTemplates_SetNumTabs",
     "PanelTemplates_SetTab",
@@ -42,6 +27,14 @@
     "TreeDataProviderConstants",
     "APIDocumentation",
     "GameTooltip_Hide",
-    "HOUSING_DASHBOARD_TIME_REMAINING"
-  ]
+    "HOUSING_DASHBOARD_TIME_REMAINING",
+    "EndeavoringDB"
+  ],
+  "wowAPI.luals.frameXML": true,
+  "wowAPI.luals.configurationScope": "User",
+  "Lua.workspace.userThirdParty": [],
+  "Lua.workspace.checkThirdParty": false,
+  "Lua.workspace.ignoreSubmodules": true,
+  "Lua.workspace.useGitIgnore": true,
+  "Lua.type.weakUnionCheck": true
 }

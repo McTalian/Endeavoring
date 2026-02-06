@@ -1,5 +1,8 @@
 .PHONY: toc_check toc_update watch dev build
 
+dev: toc_check
+	@wow-build-tools build -d -t "Endeavoring" -r ./.release --skipChangelog
+
 toc_check:
 	@wow-build-tools toc check \
 		-a "Endeavoring" \
@@ -15,9 +18,6 @@ toc_update:
 
 watch: toc_check
 	@wow-build-tools build watch -t "Endeavoring" -r ./.release
-
-dev: toc_check
-	@wow-build-tools build -d -t "Endeavoring" -r ./.release --skipChangelog
 
 build: toc_check
 	@wow-build-tools build -d -t "Endeavoring" -r ./.release

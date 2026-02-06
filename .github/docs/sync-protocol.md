@@ -8,7 +8,7 @@ The Endeavoring addon synchronizes player profiles (BattleTags, aliases, and cha
 
 **Phase 1**: ✅ Complete - Local database and character registration  
 **Phase 2**: 📋 Planned - Options UI  
-**Phase 3**: 🚧 In Design - Communication layer (this document)
+**Phase 3**: ✅ Complete - Communication layer (basic sync working)
 
 ## Design Goals
 
@@ -93,6 +93,69 @@ The Endeavoring addon synchronizes player profiles (BattleTags, aliases, and cha
 **Received**: 
 - Buffer chunks if multi-part
 - Call `DB.AddCharactersToProfile()` when complete
+
+## Implementation Notes (Phase 3 Complete)
+
+### Changes from Original Design
+
+**REQUEST_ALIAS Removed** (Optimization)
+- Alias is already included in MANIFEST message
+- Receivers update alias directly from MANIFEST
+- Eliminates unnecessary REQUEST/RESPONSE round-trip
+- `HandleRequestAlias()` kept as deprecated stub for backwards compatibility
+
+**Channel Strategy**
+- MANIFEST: Broadcast to GUILD channel (all members notified)
+- REQUEST_CHARS: Sent via WHISPER to specific player (reduces guild spam)
+- CHARS_UPDATE: Response via WHISPER back to requester
+- Result: Only MANIFEST broadcasts to guild, all other messages are peer-to-peer
+
+**Guild Roster Updates**
+- Triggers on GUILD_ROSTER_UPDATE event
+- Debounced for 5 seconds (event fires repeatedly)
+- Random delay of 2-10 seconds added after debounce
+- Prevents thundering herd problem on raid nights
+
+**Realm Handling**
+- `UnitNameUnmodified("player")` sometimes returns nil realm
+- Fallback to `GetNormalizedRealmName()` ensures realm is always present
+- Empty realm strings handled gracefully in character data parsing
+
+**Chunking**
+- Not yet implemented (deferred as optional enhancement)
+- Most players won't have 50+ characters
+- Can add later if needed
+
+### Current Message Flow
+
+```
+Player A logs in
+  ↓
+Register character locally
+  ↓
+Broadcast MANIFEST to GUILD (after 2s debounce)
+  ↓
+Player B receives MANIFEST
+  ↓
+Update alias directly from MANIFEST
+Compare charsUpdatedAt:
+  - Newer? → Whisper REQUEST_CHARS to Player A
+  - Same/older? → Already up to date
+  ↓
+Player A receives REQUEST_CHARS (via whisper)
+  ↓
+Whisper CHARS_UPDATE back to Player B
+  ↓
+Player B receives CHARS_UPDATE (via whisper)
+  ↓
+Update profile in database
+```
+
+### Debug Commands
+
+- `/endeavoring sync status` - View myProfile and all cached profiles
+- `/endeavoring sync broadcast` - Force MANIFEST broadcast
+- `/endeavoring sync purge` - Clear all synced profiles (keep myProfile)
 
 ## Communication Flow
 
@@ -288,11 +351,27 @@ Before accepting any update:
 
 ## Future Enhancements
 
+### Phase 3.5: Gossip Protocol (Planned)
+
+**Problem**: Currently only syncs when both players are online. Offline updates don't propagate.
+
+**Solution**: Implement gossip/rumor protocol:
+- When receiving MANIFEST, check ALL cached profiles
+- If we have newer data about Player C than sender has
+- Send that data to sender (even though it's not about sender)
+- Sender caches it and propagates on their next broadcast
+- Result: Profiles spread transitively through the network
+
+**Challenges**: Rate limiting, bandwidth management, avoiding loops
+
+### Other Enhancements
+
 1. **Rich presence**: Include "last seen" timestamp
 2. **Achievement tracking**: Sync endeavor completions per character
 3. **Statistics**: Track contribution per character for leaderboard
 4. **Cross-guild sync**: Support multiple guilds or custom channels
 5. **Compression**: LibDeflate for large character lists
+6. **Message chunking**: For players with 50+ characters
 
 ## See Also
 

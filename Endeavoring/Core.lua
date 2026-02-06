@@ -118,6 +118,8 @@ local function RegisterSlashCommands()
 				-- Set alias
 				if ns.DB.SetPlayerAlias(args) then
 					print("|cff00ff00Endeavoring:|r Alias set to: " .. args)
+					-- Broadcast updated manifest
+					ns.Sync.SendManifestDebounced()
 				else
 					print("|cffff0000Endeavoring:|r Failed to set alias. Make sure you're logged in.")
 				end
@@ -129,6 +131,45 @@ local function RegisterSlashCommands()
 				else
 					print("|cffff0000Endeavoring:|r No alias set.")
 				end
+			end
+		elseif command == "sync" then
+			-- Sync debug commands
+			if args == "broadcast" then
+				ns.Sync.SendManifest()
+				print("|cff00ff00Endeavoring:|r Manually triggered MANIFEST broadcast")
+			elseif args == "status" then
+				-- Show sync status
+				local myProfile = ns.DB.GetMyProfile()
+				if myProfile then
+					print("|cff00ff00Endeavoring:|r === My Profile ===")
+					print(string.format("  BattleTag: %s", myProfile.battleTag))
+					print(string.format("  Alias: %s", myProfile.alias))
+					print(string.format("  Alias Updated: %s", date("%Y-%m-%d %H:%M:%S", myProfile.aliasUpdatedAt)))
+					print(string.format("  Chars Updated: %s", date("%Y-%m-%d %H:%M:%S", myProfile.charsUpdatedAt)))
+					print(string.format("  Characters: %d", ns.DB.GetCharacterCount(myProfile)))
+				else
+					print("|cffff0000Endeavoring:|r No profile found")
+				end
+				
+				-- Show cached profiles  
+				local profiles = ns.DB.GetAllProfiles()
+				local count = 0
+				for _ in pairs(profiles) do
+					count = count + 1
+				end
+				print(string.format("|cff00ff00Endeavoring:|r === Cached Profiles: %d ===", count))
+				for battleTag, profile in pairs(profiles) do
+					print(string.format("  %s (%s) - %d chars", battleTag, profile.alias, ns.DB.GetCharacterCount(profile)))
+				end
+			elseif args == "purge" then
+				-- Purge all synced profiles
+				local count = ns.DB.PurgeSyncedProfiles()
+				print(string.format("|cff00ff00Endeavoring:|r Purged %d synced profile(s). Your profile was preserved.", count))
+			else
+				print("|cff00ff00Endeavoring:|r Sync commands:")
+				print("  /endeavoring sync broadcast - Force MANIFEST broadcast")
+				print("  /endeavoring sync status - Show profile status")
+				print("  /endeavoring sync purge - Clear all synced profiles")
 			end
 		else
 			-- Default: toggle main frame
@@ -146,16 +187,28 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("NEIGHBORHOOD_INITIATIVE_UPDATED")
 eventFrame:RegisterEvent("INITIATIVE_COMPLETED")
 eventFrame:RegisterEvent("INITIATIVE_TASK_COMPLETED")
+eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
+		local isLogin, isReload = ...
+		
 		-- Initialize database
 		ns.DB.Init()
+		
+		-- Initialize sync service
+		ns.Sync.Init()
+		ns.Sync.RegisterListener()
 		
 		-- Register current character
 		local success = ns.DB.RegisterCurrentCharacter()
 		if success then
 			local alias = ns.DB.GetPlayerAlias()
 			print("|cff00ff00Endeavoring:|r Character registered. Your alias: " .. (alias or "Unknown"))
+			
+			-- Broadcast manifest on true login (not reload)
+			if isLogin then
+				ns.Sync.SendManifestDebounced()
+			end
 		end
 		
 		RegisterSlashCommands()
@@ -177,5 +230,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 
 	if event == "NEIGHBORHOOD_INITIATIVE_UPDATED" or event == "INITIATIVE_COMPLETED" or event == "INITIATIVE_TASK_COMPLETED" then
 		RefreshInitiativeUI()
+	end
+	
+	if event == "GUILD_ROSTER_UPDATE" then
+		-- Debounced broadcast on guild roster changes (with random delay)
+		ns.Sync.OnGuildRosterUpdate()
 	end
 end)

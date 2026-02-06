@@ -49,30 +49,71 @@ Enhance the WoW Endeavors system by aggregating character contributions by playe
 - Where to hook into WoW settings? (ESC menu or Housing Dashboard?)
 - Display character list with timestamps?
 
-### Phase 3: Addon Communication 🚧
+### Phase 3: Addon Communication ✅
 
-**Status**: Designed (implementation pending)
+**Status**: Complete
 
 **Goals**:
-- [ ] Design sync protocol (manifest/request/response messages)
-- [ ] Implement guild channel broadcasting
-- [ ] Handle incoming data + conflict resolution (timestamp wins)
-- [ ] Request coalescing (batch responses to avoid spam)
-- [ ] Message chunking for large character lists
+- [x] Design sync protocol (manifest/request/response messages)
+- [x] Implement guild channel broadcasting
+- [x] Handle incoming data + conflict resolution (timestamp wins)
+- [x] Guild roster update triggering (debounced with random delay)
+- [x] Whisper-based request/response to reduce spam
 
-**Design Complete**:
-- See [Sync Protocol](sync-protocol.md) for detailed design
-- Message types defined: MANIFEST, REQUEST_ALIAS, REQUEST_CHARS, ALIAS_UPDATE, CHARS_UPDATE
-- Delta sync strategy using timestamps
-- 255-byte message limit handling
+**Completed Features**:
+- `Services/Sync.lua` - Complete communication layer
+- MANIFEST broadcast to GUILD on login and guild roster updates
+- Alias synced directly from MANIFEST (REQUEST_ALIAS removed)
+- REQUEST_CHARS/CHARS_UPDATE via WHISPER channel
+- Message parsing with validation (BattleTag format, timestamp ranges)
+- Delta sync working (only request characters added after cached timestamp)
+- Realm handling with GetNormalizedRealmName() fallback
+- Debug commands: `/endeavoring sync status`, `/endeavoring sync broadcast`, `/endeavoring sync purge`
 
-**Next Steps**:
-1. Create `Services/Sync.lua` for communication layer
-2. Implement MANIFEST broadcast on login
-3. Implement REQUEST handling
-4. Implement response message parsing
-5. Add coalescing/debouncing
-6. Test with multiple accounts
+**Key Implementation Details**:
+- GUILD_ROSTER_UPDATE triggers manifest after 5s debounce + 2-10s random delay
+- Prevents thundering herd on raid nights
+- Validates all incoming data (prevents tampering with myProfile)
+- Empty realm strings handled gracefully
+
+**Not Yet Implemented** (optional enhancements):
+- Message chunking for large character lists (50+ characters)
+- Verbose/debug logging toggle
+
+### Phase 3.5: Cached Profile Propagation 📋
+
+**Status**: Planned (builds on Phase 3)
+
+**Problem**: 
+Currently, sync only works when both players are online simultaneously. If Player A updates their alias while Player B is offline, Player B won't receive the update until they both happen to be online at the same time again. This breaks eventual consistency.
+
+**Goal**: Ensure all cached profiles eventually reach consistency even when players are offline
+
+**Approach**:
+When receiving a MANIFEST, compare against ALL cached profiles (not just the sender's):
+- If we have Player C's cached profile and their timestamps are older than ours
+- We can send Player C's data to the MANIFEST sender
+- The sender caches it and will eventually propagate it to Player C
+- Result: Profiles spread through the network transitively
+
+**Implementation Steps**:
+- [ ] On MANIFEST receipt, iterate through cached profiles
+- [ ] For each cached profile with newer timestamps than sender has
+- [ ] Send ALIAS_UPDATE/CHARS_UPDATE to inform sender
+- [ ] Sender caches the data and propagates on their next MANIFEST broadcast
+- [ ] Add "gossip protocol" to gradually sync all cached data across network
+
+**Challenges**:
+- Bandwidth: Could generate many messages if profiles are very outdated
+- Rate limiting: Need to spread gossip messages over time
+- Loops: Need to ensure we don't create infinite propagation loops
+- Privacy: Consider if players want to opt out of profile propagation
+
+**Benefits**:
+- True eventual consistency
+- Network becomes self-healing
+- New player joining guild gets all cached profiles quickly
+- Offline updates eventually propagate to everyone
 
 ### Phase 4: Testing & Polish 📅
 
@@ -99,18 +140,26 @@ Endeavoring/
 ├── Integrations/
 │   └── HousingDashboard.lua  # Blizzard frame integration
 └── Services/
-    ├── NeighborhoodAPI.lua    # Neighborhood/Initiative APIs
-    └── PlayerInfo.lua         # ✅ Complete - Player info APIs
+    ├── NeighborhoodAPI.lua   # Neighborhood/Initiative APIs
+    ├── PlayerInfo.lua        # ✅ Complete - Player info APIs
+    └── Sync.lua              # ✅ Complete - Communication layer
 ```
 
 **Missing Components**:
-- `Services/Sync.lua` - Communication/sync service *(Phase 3)*
-- `Features/Leaderboard.lua` - Leaderboard UI *(Future)*
 - `Features/Settings.lua` - Options panel *(Phase 2)*
+- `Features/Leaderboard.lua` - Leaderboard UI *(Future)*
 
 ## Known Issues & Technical Debt
 
-None currently - Phase 1 is clean and well-architected.
+### Current Limitations
+
+**Eventual Consistency**: Profiles only sync when both players are online simultaneously. See Phase 3.5 for planned gossip protocol to address this.
+
+**Debug Logging**: All sync messages currently print to chat. Need verbose/debug mode toggle.
+
+### Clean Architecture
+
+No technical debt - Phase 1-3 implementation is clean and well-architected.
 
 ## Recent Architectural Decisions
 

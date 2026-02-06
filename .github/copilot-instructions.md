@@ -50,8 +50,8 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Phase 1 Complete ✅  
-**Next Phase**: Phase 3 (Communication Layer) or Phase 2 (Options UI)
+**Current Phase**: Phase 3 Complete ✅  
+**Next Phase**: Phase 2 (Options UI) or Phase 4 (Testing & Polish)
 
 See [Development Status](docs/development-status.md) for detailed progress tracking and roadmap.
 
@@ -62,6 +62,9 @@ See [Development Status](docs/development-status.md) for detailed progress track
 - ✅ Alias management via `/endeavoring alias <name>`
 - ✅ Timestamp-based delta sync strategy (`aliasUpdatedAt` and `charsUpdatedAt`)
 - ✅ Architecture cleanup: Services/ for WoW APIs, Data/ for persistence
+- ✅ Full sync protocol implementation (MANIFEST broadcast, whisper-based requests/responses)
+- ✅ Guild roster update triggering with debouncing and random delay
+- ✅ Realm handling fix with GetNormalizedRealmName() fallback
 
 ## Architecture & Conventions
 
@@ -71,6 +74,12 @@ The addon follows a clear separation of concerns:
 - **Data/** - Data persistence and access (SavedVariables management)
 - **Features/** - UI components and feature implementations  
 - **Integrations/** - Optional hooks into other addons or Blizzard frames
+
+**Sync Protocol Notes:**
+- MANIFEST broadcasts to GUILD channel on login and guild roster updates
+- Alias synced directly from MANIFEST (no separate REQUEST_ALIAS needed)
+- REQUEST_CHARS and CHARS_UPDATE use WHISPER to reduce guild spam
+- Guild roster updates trigger manifests with 5s debounce + 2-10s random delay
 
 **Key Convention - Guard Clauses:**
 - ✅ Use guards for external/optional dependencies (Blizzard APIs, other addons, runtime state)

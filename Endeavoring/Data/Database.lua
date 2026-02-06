@@ -117,8 +117,7 @@ function DB.SetPlayerAlias(alias)
 	
 	myProfile.alias = alias
 	myProfile.aliasUpdatedAt = timestamp
-	-- Don't update updatedAt - that's only for character changes
-	
+
 	return true
 end
 
@@ -179,6 +178,36 @@ end
 --- @return Profile|nil profile The current player's profile or nil if not found
 function DB.GetPlayerProfile()
 	return EndeavoringDB.global.myProfile
+end
+
+--- Alias for GetPlayerProfile (for consistency with Sync service naming)
+--- @return Profile|nil profile The current player's profile or nil if not found
+function DB.GetMyProfile()
+	return EndeavoringDB.global.myProfile
+end
+
+--- Get the current player's BattleTag
+--- @return string|nil battleTag The current player's BattleTag or nil if not found
+function DB.GetMyBattleTag()
+	if EndeavoringDB.global.myProfile then
+		return EndeavoringDB.global.myProfile.battleTag
+	end
+	return nil
+end
+
+--- Count the number of characters in a profile
+--- @param profile Profile The profile to count characters for
+--- @return number count The number of characters
+function DB.GetCharacterCount(profile)
+	if not profile or not profile.characters then
+		return 0
+	end
+	
+	local count = 0
+	for _ in pairs(profile.characters) do
+		count = count + 1
+	end
+	return count
 end
 
 --- Get all profiles (synced profiles only, excludes myProfile)
@@ -373,5 +402,18 @@ function DB.UpdateProfileAlias(battleTag, alias, aliasUpdatedAt)
 	end
 	
 	return false
+end
+
+--- Purge all synced profiles (keeps myProfile)
+--- @return number count The number of profiles purged
+function DB.PurgeSyncedProfiles()
+	local count = 0
+	for _ in pairs(EndeavoringDB.global.profiles) do
+		count = count + 1
+	end
+	
+	EndeavoringDB.global.profiles = {}
+	
+	return count
 end
 
