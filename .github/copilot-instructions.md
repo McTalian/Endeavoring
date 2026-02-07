@@ -36,7 +36,7 @@ When working on this project:
 
 ## Resources
 
-- The `wow-ui-source` repository on GitHub, which contains the WoW client-generated UI source code, is the most valuable resource for understanding the underlying API and functionality of the WoW UI, and can help inform development decisions for the Endeavoring addon. This repository must always be used as a reference when working on the addon, to ensure that any changes or additions are compatible with the WoW client and adhere to best practices for WoW addon development. The repository can be found at `../wow-ui-source` relative to the root of the Endeavoring project. Some helpful resources within the `wow-ui-source` repository that I've found include:
+- The `wow-ui-source` repository on GitHub, which contains the WoW client-generated UI source code, is the most valuable resource for understanding the underlying API and functionality of the WoW UI, and can help inform development decisions for the Endeavoring addon. This repository must always be used as a reference when working on the addon, to ensure that any changes or additions are compatible with the WoW client and adhere to best practices for WoW addon development. The repository can be found at `../wow-ui-source` relative to the root of the Endeavoring project or within the workspace if the project is opened as a VS Code workspace. Some helpful resources within the `wow-ui-source` repository that I've found include:
   - `wow-ui-source/Interface/AddOns/Blizzard_APIDocumentationGenerated/NeighborhoodInitiativeDocumentation.lua` that documents the API for the Neighborhood Initiatives system, which is a core part of the Endeavors feature in WoW.
   - `wow-ui-source/Interface/AddOns/Blizzard_HousingDashboard/Blizzard_HousingDashboard.lua` which creates the mixin for the HousingDashboardFrame.
   - `wow-ui-source/Interface/AddOns/Blizzard_HousingDashboard/Blizzard_HousingDashboardHouseInfoContent.lua` which appears to be the main logic for the various subframes of the HousingDashboardFrame.
@@ -50,21 +50,44 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Phase 3 Complete ✅  
-**Next Phase**: Phase 2 (Options UI) or Phase 4 (Testing & Polish)
+**Current Phase**: Message Optimization Complete ✅  
+**Next Phase**: Phase 4 (In-Game Testing) or Phase 2 (Options UI)
 
 See [Development Status](docs/development-status.md) for detailed progress tracking and roadmap.
 
 ### Recent Major Work (February 2026)
 
-- ✅ Database service with authoritative `myProfile` and synced `profiles`
-- ✅ Character registration on login  
-- ✅ Alias management via `/endeavoring alias <name>`
-- ✅ Timestamp-based delta sync strategy (`aliasUpdatedAt` and `charsUpdatedAt`)
-- ✅ Architecture cleanup: Services/ for WoW APIs, Data/ for persistence
-- ✅ Full sync protocol implementation (MANIFEST broadcast, whisper-based requests/responses)
-- ✅ Guild roster update triggering with debouncing and random delay
-- ✅ Realm handling fix with GetNormalizedRealmName() fallback
+**Message Codec (CBOR + Compression)** ✅
+- Implemented CBOR serialization for structured, type-safe messages
+- Automatic Deflate compression for messages >100 bytes (40-60% size reduction)
+- Protocol versioning with version + flags bytes for future evolution
+- Single-character message type identifiers (M, R, A, C) for wire efficiency
+- Defense-in-depth error handling: size validation + return code checking
+- Comprehensive error messages for test users to identify sync issues
+- Full V1 removal - clean break to CBOR-only (0 users, alpha phase)
+- Documentation: [message-codec.md](docs/message-codec.md)
+
+**Phase 3.5 - Gossip Protocol** ✅
+- Implemented opportunistic profile propagation via gossip
+- BattleTag-based tracking (handles alt-swapping elegantly)
+- Per-session gossip limits (no time-based cooldowns)
+- Rate limiting: Max 3 profiles per MANIFEST received
+- Gossip statistics via `/endeavoring sync gossip`
+
+**Phase 3 - Direct Sync** ✅
+- Database service with authoritative `myProfile` and synced `profiles`
+- Character registration on login  
+- Alias management via `/endeavoring alias <name>`
+- Timestamp-based delta sync strategy (`aliasUpdatedAt` and `charsUpdatedAt`)
+- Architecture cleanup: Services/ for WoW APIs, Data/ for persistence
+- Full sync protocol implementation (MANIFEST broadcast, whisper-based requests/responses)
+- Guild roster update triggering with debouncing and random delay
+- Realm handling fix with GetNormalizedRealmName() fallback
+
+**Code Quality Improvements** ✅
+- Verbose debug mode toggle (`/endeavoring sync verbose`)
+- Slash commands refactored to Commands.lua with discrete handlers
+- Message prefix constants (INFO, ERROR, WARN) in Bootstrap.lua
 
 ## Architecture & Conventions
 

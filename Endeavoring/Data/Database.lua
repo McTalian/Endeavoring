@@ -26,10 +26,14 @@ local ns = select(2, ...)
 local DB = {}
 ns.DB = DB
 
+local ERROR = ns.Constants.PREFIX_ERROR
+local INFO = ns.Constants.PREFIX_INFO
+
 local DEFAULT_DB = {
 	global = {
 		myProfile = nil,
 		profiles = {},
+		verboseDebug = false,
 		version = 1
 	}
 }
@@ -54,6 +58,10 @@ function DB.Init()
 		EndeavoringDB.global.profiles = {}
 	end
 	
+	if EndeavoringDB.global.verboseDebug == nil then
+		EndeavoringDB.global.verboseDebug = false
+	end
+	
 	-- myProfile will be initialized on first character login
 end
 
@@ -62,6 +70,7 @@ end
 function DB.RegisterCurrentCharacter()
 	local battleTag = ns.PlayerInfo.GetBattleTag()
 	if not battleTag then
+		print(ERROR .. " Unable to register character: BattleTag not found. Make sure you're logged in to Battle.net.")
 		return false
 	end
 	
@@ -93,6 +102,7 @@ function DB.RegisterCurrentCharacter()
 		}
 		-- Update profileʼs characters timestamp
 		myProfile.charsUpdatedAt = timestamp
+		print(INFO .. " New Character registered: " .. characterInfo.name .. " (" .. characterInfo.realm .. ")")
 	end
 	
 	return true
@@ -104,6 +114,7 @@ end
 function DB.SetPlayerAlias(alias)
 	local battleTag = ns.PlayerInfo.GetBattleTag()
 	if not battleTag then
+		print(ERROR .. " Unable to set alias: BattleTag not found. Make sure you're logged in to Battle.net.")
 		return false
 	end
 	
@@ -126,6 +137,7 @@ end
 --- @return string|nil alias The alias or nil if not found
 function DB.GetAlias(battleTag)
 	if not battleTag then
+		print(ERROR .. " Unable to get alias: BattleTag not provided.")
 		return nil
 	end
 	
@@ -157,6 +169,7 @@ end
 --- @return table|nil characters Table of characters or nil if not found
 function DB.GetCharacters(battleTag)
 	if not battleTag then
+		print(ERROR .. " Unable to get characters: BattleTag not provided.")
 		return nil
 	end
 	
@@ -415,5 +428,21 @@ function DB.PurgeSyncedProfiles()
 	EndeavoringDB.global.profiles = {}
 	
 	return count
+end
+
+--- Get verbose debug mode status
+--- @return boolean enabled Whether verbose debug mode is enabled
+function DB.IsVerboseDebug()
+	return EndeavoringDB and EndeavoringDB.global and EndeavoringDB.global.verboseDebug or false
+end
+
+--- Set verbose debug mode
+--- @param enabled boolean Whether to enable verbose debug mode
+function DB.SetVerboseDebug(enabled)
+	if not EndeavoringDB or not EndeavoringDB.global then
+		return
+	end
+	
+	EndeavoringDB.global.verboseDebug = enabled
 end
 

@@ -105,79 +105,6 @@ local function ToggleMainFrame()
 	end
 end
 
-local function RegisterSlashCommands()
-	SLASH_ENDEAVORING1 = "/endeavoring"
-	SLASH_ENDEAVORING2 = "/ndvr"
-	SlashCmdList.ENDEAVORING = function(msg)
-		-- Parse command and arguments
-		local command, args = msg:match("^(%S*)%s*(.-)$")
-		command = command:lower()
-		
-		if command == "alias" then
-			if args and args ~= "" then
-				-- Set alias
-				if ns.DB.SetPlayerAlias(args) then
-					print("|cff00ff00Endeavoring:|r Alias set to: " .. args)
-					-- Broadcast updated manifest
-					ns.Sync.SendManifestDebounced()
-				else
-					print("|cffff0000Endeavoring:|r Failed to set alias. Make sure you're logged in.")
-				end
-			else
-				-- Show current alias
-				local alias = ns.DB.GetPlayerAlias()
-				if alias then
-					print("|cff00ff00Endeavoring:|r Your current alias is: " .. alias)
-				else
-					print("|cffff0000Endeavoring:|r No alias set.")
-				end
-			end
-		elseif command == "sync" then
-			-- Sync debug commands
-			if args == "broadcast" then
-				ns.Sync.SendManifest()
-				print("|cff00ff00Endeavoring:|r Manually triggered MANIFEST broadcast")
-			elseif args == "status" then
-				-- Show sync status
-				local myProfile = ns.DB.GetMyProfile()
-				if myProfile then
-					print("|cff00ff00Endeavoring:|r === My Profile ===")
-					print(string.format("  BattleTag: %s", myProfile.battleTag))
-					print(string.format("  Alias: %s", myProfile.alias))
-					print(string.format("  Alias Updated: %s", date("%Y-%m-%d %H:%M:%S", myProfile.aliasUpdatedAt)))
-					print(string.format("  Chars Updated: %s", date("%Y-%m-%d %H:%M:%S", myProfile.charsUpdatedAt)))
-					print(string.format("  Characters: %d", ns.DB.GetCharacterCount(myProfile)))
-				else
-					print("|cffff0000Endeavoring:|r No profile found")
-				end
-				
-				-- Show cached profiles  
-				local profiles = ns.DB.GetAllProfiles()
-				local count = 0
-				for _ in pairs(profiles) do
-					count = count + 1
-				end
-				print(string.format("|cff00ff00Endeavoring:|r === Cached Profiles: %d ===", count))
-				for battleTag, profile in pairs(profiles) do
-					print(string.format("  %s (%s) - %d chars", battleTag, profile.alias, ns.DB.GetCharacterCount(profile)))
-				end
-			elseif args == "purge" then
-				-- Purge all synced profiles
-				local count = ns.DB.PurgeSyncedProfiles()
-				print(string.format("|cff00ff00Endeavoring:|r Purged %d synced profile(s). Your profile was preserved.", count))
-			else
-				print("|cff00ff00Endeavoring:|r Sync commands:")
-				print("  /endeavoring sync broadcast - Force MANIFEST broadcast")
-				print("  /endeavoring sync status - Show profile status")
-				print("  /endeavoring sync purge - Clear all synced profiles")
-			end
-		else
-			-- Default: toggle main frame
-			ToggleMainFrame()
-		end
-	end
-end
-
 ns.ToggleMainFrame = ToggleMainFrame
 ns.RefreshInitiativeUI = RefreshInitiativeUI
 
@@ -202,16 +129,13 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		-- Register current character
 		local success = ns.DB.RegisterCurrentCharacter()
 		if success then
-			local alias = ns.DB.GetPlayerAlias()
-			print("|cff00ff00Endeavoring:|r Character registered. Your alias: " .. (alias or "Unknown"))
-			
 			-- Broadcast manifest on true login (not reload)
 			if isLogin then
 				ns.Sync.SendManifestDebounced()
 			end
 		end
 		
-		RegisterSlashCommands()
+		ns.Commands.Register()
 		local integration = ns.Integrations and ns.Integrations.HousingDashboard
 		if integration and integration.EnsureLoaded and integration.EnsureLoaded() then
 			integration.RegisterButtonHook()

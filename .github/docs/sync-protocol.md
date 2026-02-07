@@ -8,7 +8,8 @@ The Endeavoring addon synchronizes player profiles (BattleTags, aliases, and cha
 
 **Phase 1**: ✅ Complete - Local database and character registration  
 **Phase 2**: 📋 Planned - Options UI  
-**Phase 3**: ✅ Complete - Communication layer (basic sync working)
+**Phase 3**: ✅ Complete - Direct sync protocol  
+**Phase 3.5**: ✅ Complete - Gossip protocol for profile propagation
 
 ## Design Goals
 
@@ -349,20 +350,77 @@ Before accepting any update:
 /endeavoring sync request BattleTag#1234  -- Force request for specific player
 ```
 
+## Gossip Protocol (Phase 3.5 - Complete)
+
+### Problem Solved
+
+Direct sync (Phase 3) only works when both players are online simultaneously. If Player A updates while Player B is offline, Player B won't learn about it until:
+1. Player A logs back in, AND
+2. Player B happens to be online at the same time
+
+This breaks eventual consistency.
+
+### Solution: Opportunistic Profile Sharing
+
+When receiving a MANIFEST from Player B, we proactively share cached profiles we have about other players (Players C, D, E...) with Player B. This creates transitive profile propagation.
+
+### Implementation Details
+
+**Gossip Trigger**: Every MANIFEST receipt triggers gossip check  
+**Selection Strategy**: Share up to 3 profiles per MANIFEST, prioritizing recently updated ones  
+**Tracking**: `lastGossip[senderBattleTag][profileBattleTag] = true` (per session, not persisted)  
+**Alt-Swapping Handled**: Tracks by BattleTag, so character switches don't trigger re-gossip  
+**Session Reset**: Gossip tracking clears on reload/relog (natural boundary)
+
+**Messages Used**: Reuses existing ALIAS_UPDATE and CHARS_UPDATE (no protocol changes!)  
+**Channel**: All gossip via WHISPER (doesn't spam guild)
+
+### Example Flow
+
+```
+Player C updates alias while you're offline
+  ↓
+Player A logs in, receives Player C's MANIFEST
+  ↓
+Player A caches Player C's profile
+  ↓
+You log in later, broadcast MANIFEST
+  ↓
+Player A receives your MANIFEST
+  ↓
+Player A gossips Player C's profile to you (via WHISPER)
+  ↓
+You now have Player C's profile!
+  ↓
+Next time Player D logs in and you receive their MANIFEST
+  ↓
+You gossip Player C's profile to Player D
+  ↓
+Profile spreads through network transitively
+```
+
+### Configuration
+
+```lua
+GOSSIP_MAX_PROFILES_PER_MANIFEST = 3  -- Bandwidth control
+-- No cooldown - session-based only
+```
+
+### Debug Command
+
+`/endeavoring sync gossip` - Shows gossip statistics (players reached, profiles shared)
+
 ## Future Enhancements
 
-### Phase 3.5: Gossip Protocol (Planned)
+### Catalog Exchange (Phase 3.6 - Planned)
 
-**Problem**: Currently only syncs when both players are online. Offline updates don't propagate.
+**Problem**: Gossip provides eventual consistency but doesn't handle "completely missed" profiles. If you're offline when Player X joins guild and never receive their MANIFEST, you won't discover them.
 
-**Solution**: Implement gossip/rumor protocol:
-- When receiving MANIFEST, check ALL cached profiles
-- If we have newer data about Player C than sender has
-- Send that data to sender (even though it's not about sender)
-- Sender caches it and propagates on their next broadcast
-- Result: Profiles spread transitively through the network
-
-**Challenges**: Rate limiting, bandwidth management, avoiding loops
+**Solution**: Periodic BattleTag list comparison:
+- Exchange list of known BattleTags (without full profile data)
+- Identify profiles you're missing entirely
+- Request those specific profiles
+- Fills gaps in the cache
 
 ### Other Enhancements
 

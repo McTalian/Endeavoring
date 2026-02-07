@@ -16,11 +16,13 @@
 
 Bootstrap.lua
 Services/PlayerInfo.lua
+Services/MessageCodec.lua
 Data/Database.lua
 Services/NeighborhoodAPI.lua
 Services/Sync.lua
 Features/Header.lua
 Features/Tasks.lua
 Integrations/HousingDashboard.lua
+Commands.lua
 Core.lua
 #locale/locales.xml
