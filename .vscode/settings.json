@@ -28,7 +28,15 @@
     "APIDocumentation",
     "GameTooltip_Hide",
     "HOUSING_DASHBOARD_TIME_REMAINING",
-    "EndeavoringDB"
+    "EndeavoringDB",
+    "FormatPercentage",
+    "CreateAtlasMarkup",
+    "GameTooltip",
+    "NORMAL_FONT_COLOR",
+    "DISABLED_FONT_COLOR",
+    "SecondsToTime",
+    "CopyTable",
+    "UIParent"
   ],
   "wowAPI.luals.frameXML": true,
   "wowAPI.luals.configurationScope": "User",
