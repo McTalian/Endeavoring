@@ -8,6 +8,7 @@ ns.Sync = Sync
 
 -- Shortcuts
 local ERROR = ns.Constants.PREFIX_ERROR
+local DebugPrint = ns.DebugPrint
 
 -- Constants
 local ADDON_PREFIX = "Ndvrng"
@@ -35,18 +36,6 @@ local guildRosterDebounceTimer = nil
 -- Tracks which profiles we've gossiped to which players THIS SESSION
 -- Per-session only (not persisted) - resets on reload/relog
 local lastGossip = {}
-
---- Print debug message if verbose debug mode is enabled
---- @param message string The message to print
---- @param color string|nil Optional color code (default: green)
-local function DebugPrint(message, color)
-	if not ns.DB.IsVerboseDebug() then
-		return
-	end
-	
-	color = color or "00ff00" -- Green by default
-	print(string.format("|cff%sEndeavoring:|r %s", color, message))
-end
 
 --- Initialize the sync service
 function Sync.Init()

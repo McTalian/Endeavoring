@@ -34,6 +34,21 @@ When working on this project:
 - Be open to feedback and willing to engage in discussions about the best approach to take for the project.
 - Collaborate in a respectful and constructive manner, focusing on the shared goal of improving the Endeavoring addon for the benefit of its users.
 
+## Validating Changes
+
+Until automated tests are implemented, validating changes will primarily involve manual testing in the WoW client. When suggesting code changes or improvements, consider how they can be tested and validated by the user. Provide clear instructions on how to test the changes in the WoW client, including any specific scenarios or edge cases that should be tested.
+
+When reviewing code changes, consider the potential impact on the user experience and functionality of the addon. If a change has the potential to introduce bugs or issues, suggest ways to mitigate those risks and ensure that the change is thoroughly tested before being merged into the main codebase. Reviews should also consider the overall quality and maintainability of the codebase. If a change introduces technical debt or makes the code more difficult to understand or maintain, suggest ways to improve the code quality and ensure that the codebase remains clean and maintainable over time.
+
+### wow-build-tools
+
+This project leverages `wow-build-tools` for packaging the addon. It comes with a few checks as well like `wow-build-tools toc check` to validate the TOC imports and the files on disk. Many common `wow-build-tools` commands are represented as `make` targets. An **important nuance** to the current version of `wow-build-tools` is that when a build/package command is run, it will _not_ copy files that are not associated with source control. So if you are making changes to files that are not yet tracked by git, make sure to `git add` those files before running the build/package commands, otherwise your changes will not be included in the build output. This is a design choice of BigWigs `packager` shell script that was retained in McTalian's development of `wow-build-tools` to serve as a drop-in replacement for `packager`. But it doesn't necessarily align with the expected behavior of a build tool, so this will very likely change with `wow-build-tools` in the future, but for now, just be aware of this nuance when making changes to the addon and building it for testing in the WoW client.
+
+**Common commands include:**
+- `make dev` - Builds the addon and copies the output to the WoW Addons directory without uploading to addon distros and skipping changelog generation. Useful for quick iteration and testing in the WoW client.
+- `make toc_check` - Validates that all paths referenced in the TOC tree (including XML imports and their imports) are present on disk. Useful for catching missing files before testing in the WoW client or creating a build. It will also include the number of "importable" files on disk that are not part of the TOC import tree. This command is also run as part of the `make dev` command, so you get this validation for free when running `make dev`.
+- `make watch` - Watches for file changes and automatically runs the `make dev` command when changes are detected. Useful for rapid development and testing in the WoW client. The user generally has this command running in the background while working on the addon, to allow for quick iteration and testing of changes in the WoW client.
+
 ## Resources
 
 - The `wow-ui-source` repository on GitHub, which contains the WoW client-generated UI source code, is the most valuable resource for understanding the underlying API and functionality of the WoW UI, and can help inform development decisions for the Endeavoring addon. This repository must always be used as a reference when working on the addon, to ensure that any changes or additions are compatible with the WoW client and adhere to best practices for WoW addon development. The repository can be found at `../wow-ui-source` relative to the root of the Endeavoring project or within the workspace if the project is opened as a VS Code workspace. Some helpful resources within the `wow-ui-source` repository that I've found include:

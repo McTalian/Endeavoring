@@ -5,6 +5,8 @@ local ns = select(2, ...)
 
 local constants = ns.Constants
 
+local DebugPrint = ns.DebugPrint
+
 local function CreateTabContent(parent, label)
 	local content = CreateFrame("Frame", nil, parent)
 	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -120)
@@ -138,6 +140,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		ns.Commands.Register()
 		local integration = ns.Integrations and ns.Integrations.HousingDashboard
 		if integration and integration.EnsureLoaded and integration.EnsureLoaded() then
+			DebugPrint("Detected " .. integration.GetAddonName() .. " loaded on PLAYER_ENTERING_WORLD, registering button hook")
 			integration.RegisterButtonHook()
 		end
 		return
@@ -146,7 +149,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 	if event == "ADDON_LOADED" then
 		local integration = ns.Integrations and ns.Integrations.HousingDashboard
 		local addonNameLoaded = ...
-		if integration and addonNameLoaded == integration.GetAddonName() then
+		if integration and addonNameLoaded == integration.GetAddonName() and integration.EnsureLoaded() then
+			DebugPrint("Detected " .. integration.GetAddonName() .. " loaded, registering button hook")
 			integration.RegisterButtonHook()
 		end
 		return
@@ -161,3 +165,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		ns.Sync.OnGuildRosterUpdate()
 	end
 end)
+
+--@alpha@
+if not NDVRNG then
+	NDVRNG = ns
+else
+	error("Namespace conflict: NDVRNG is already defined. Please ensure only one addon is using the NDVRNG namespace.")
+end
+--@end-alpha@

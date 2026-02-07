@@ -31,3 +31,15 @@ ns.state = ns.state or {
 }
 
 ns.ui = ns.ui or {}
+
+--- Print debug message if verbose debug mode is enabled
+--- @param message string The message to print
+--- @param color string|nil Optional color code (default: green)
+function ns.DebugPrint(message, color)
+	if not ns.DB.IsVerboseDebug() then
+		return
+	end
+	
+	color = color or "00ff00" -- Green by default
+	print(string.format("|cff%sEndeavoring:|r %s", color, message))
+end

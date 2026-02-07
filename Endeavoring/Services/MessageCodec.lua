@@ -6,6 +6,8 @@ local ns = select(2, ...)
 local MessageCodec = {}
 ns.MessageCodec = MessageCodec
 
+local DebugPrint = ns.DebugPrint
+
 -- Protocol version (increment when making breaking changes)
 local PROTOCOL_VERSION = 1
 
@@ -73,6 +75,8 @@ function MessageCodec.Decode(encoded)
 	if not C_EncodingUtil or not C_EncodingUtil.DeserializeCBOR then
 		return nil, "C_EncodingUtil.DeserializeCBOR not available"
 	end
+
+	DebugPrint(tostring(not encoded) .. " --> " .. tostring(#encoded), "ff8800")
 	
 	-- Validate minimum message size (version + flags)
 	if not encoded or #encoded < 2 then

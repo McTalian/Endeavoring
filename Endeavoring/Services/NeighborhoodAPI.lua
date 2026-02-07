@@ -51,3 +51,17 @@ function API.FormatTimeRemaining(durationSeconds)
 
 	return fallback
 end
+
+function API.GetActivityLogInfo()
+	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetInitiativeActivityLogInfo then
+		return C_NeighborhoodInitiative.GetInitiativeActivityLogInfo()
+	end
+
+	return nil
+end
+
+function API.RequestActivityLog()
+	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestInitiativeActivityLog then
+		C_NeighborhoodInitiative.RequestInitiativeActivityLog()
+	end
+end

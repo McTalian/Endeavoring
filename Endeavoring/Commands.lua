@@ -75,7 +75,7 @@ local function HandleSyncPurge()
 end
 
 --- Handle sync verbose command - toggle verbose debug mode
-local function HandleSyncVerbose()
+local function HandleToggleVerbose()
 	local current = ns.DB.IsVerboseDebug()
 	ns.DB.SetVerboseDebug(not current)
 	if not current then
@@ -100,13 +100,81 @@ local function HandleSyncGossip()
 	end
 end
 
+--- Display leaderboard results
+--- @param timeRange number The time range filter
+local function DisplayLeaderboard(timeRange)
+	-- Get activity log
+	local activityLog = ns.API.GetActivityLogInfo()
+	if not activityLog or not activityLog.isLoaded then
+		print(ERROR .. " Activity log not available. Make sure you're in a neighborhood with an active Endeavor.")
+		return
+	end
+	
+	-- Build leaderboard
+	local leaderboard = ns.Leaderboard.BuildEnriched(activityLog, timeRange)
+	
+	if #leaderboard == 0 then
+		print(INFO .. " No activity found for the selected time range.")
+		return
+	end
+	
+	-- Display leaderboard
+	local rangeName = ns.Leaderboard.GetTimeRangeName(timeRange)
+	print(string.format(INFO .. " === Contribution Leaderboard (%s) ===", rangeName))
+	
+	local maxDisplay = 10
+	for rank, entry in ipairs(leaderboard) do
+		if rank > maxDisplay then
+			break
+		end
+		
+		local marker = entry.isLocalPlayer and " (You)" or ""
+		print(string.format("  %d. %s: %d points (%d tasks)%s", 
+			rank, 
+			entry.displayName, 
+			entry.total, 
+			entry.entries,
+			marker))
+	end
+	
+	if #leaderboard > maxDisplay then
+		print(string.format("  ... and %d more", #leaderboard - maxDisplay))
+	end
+	
+	print(INFO .. " Use: /endeavoring leaderboard [all|today|week]")
+end
+
+--- Handle leaderboard command - show contribution rankings
+--- @param args string Time range filter: "all", "today", "week"
+local function HandleLeaderboard(args)
+	-- Parse time range argument
+	local timeRange = ns.Leaderboard.TIME_RANGE.ALL_TIME
+	if args == "today" then
+		timeRange = ns.Leaderboard.TIME_RANGE.TODAY
+	elseif args == "week" then
+		timeRange = ns.Leaderboard.TIME_RANGE.THIS_WEEK
+	end
+	
+	-- Always request fresh data - set up one-shot event handler
+	print(INFO .. " Requesting activity log data...")
+	
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
+	frame:SetScript("OnEvent", function(self, event)
+		self:UnregisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
+		DisplayLeaderboard(timeRange)
+	end)
+	
+	-- Request activity log data
+	ns.API.RequestActivityLog()
+end
+
 --- Handle sync help - show available sync commands
 local function HandleSyncHelp()
 	print(INFO .. " Sync commands:")
 	print("  /endeavoring sync broadcast - Force MANIFEST broadcast")
 	print("  /endeavoring sync status - Show profile status")
 	print("  /endeavoring sync purge - Clear all synced profiles")
-	print("  /endeavoring sync verbose - Toggle verbose debug output")
 	print("  /endeavoring sync gossip - Show gossip statistics")
 end
 
@@ -119,8 +187,6 @@ local function HandleSync(args)
 		HandleSyncStatus()
 	elseif args == "purge" then
 		HandleSyncPurge()
-	elseif args == "verbose" then
-		HandleSyncVerbose()
 	elseif args == "gossip" then
 		HandleSyncGossip()
 	else
@@ -146,6 +212,16 @@ local function RouteCommand(msg)
 		HandleAlias(args)
 	elseif command == "sync" then
 		HandleSync(args)
+	elseif command == "leaderboard" or command == "lb" then
+		HandleLeaderboard(args)
+	elseif command == "verbose" then
+		HandleToggleVerbose()
+	elseif command == "help" then
+		print(INFO .. " Endeavoring commands:")
+		print("  /endeavoring alias [name] - Set or show your player alias")
+		print("  /endeavoring sync [subcommand] - Sync-related commands (type '/endeavoring sync help' for details)")
+		print("  /endeavoring leaderboard [all|today|week] - Show contribution leaderboard")
+		print("  /endeavoring verbose - Toggle verbose debug mode")
 	else
 		HandleDefault()
 	end
