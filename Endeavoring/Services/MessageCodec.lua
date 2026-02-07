@@ -8,113 +8,105 @@ ns.MessageCodec = MessageCodec
 
 local DebugPrint = ns.DebugPrint
 
--- Protocol version (increment when making breaking changes)
-local PROTOCOL_VERSION = 1
-
--- Compression threshold: only compress if serialized data exceeds this size
-local COMPRESSION_THRESHOLD = 100
-
--- Message format flags
-local FLAG_COMPRESSED = 0x01
-local FLAG_RESERVED1 = 0x02
-local FLAG_RESERVED2 = 0x04
-local FLAG_RESERVED3 = 0x08
+--[[
+Message Wire Format:
+  Three-step encoding to handle binary data safely
+  
+  Encode: Table → CBOR serialize → Deflate compress → Base64 encode → String
+  Decode: String → Base64 decode → Deflate decompress → CBOR deserialize → Table
+  
+  Base64 encoding ensures the compressed binary becomes safe ASCII characters
+  for transmission through WoW's addon message API.
+  
+  Message type is embedded in the decoded table's 'type' field
+--]]
 
 --- Encode a Lua table/value into a wire-format string
---- Automatically compresses large payloads
+--- Serializes to CBOR, compresses, then base64 encodes for safe transmission
 --- @param data any The data to encode (table, string, number, etc.)
 --- @return string|nil encoded The encoded message, or nil on failure
 --- @return string|nil error Error message if encoding failed
 function MessageCodec.Encode(data)
-	-- Guard: Check if CBOR API is available
+	-- Guard: Check if APIs are available
 	if not C_EncodingUtil or not C_EncodingUtil.SerializeCBOR then
 		return nil, "C_EncodingUtil.SerializeCBOR not available"
 	end
+	if not C_EncodingUtil.CompressString then
+		return nil, "C_EncodingUtil.CompressString not available"
+	end
+	if not C_EncodingUtil.EncodeBase64 then
+		return nil, "C_EncodingUtil.EncodeBase64 not available"
+	end
 	
-	-- Serialize to CBOR
+	-- Step 1: Serialize to CBOR
 	local serialized = C_EncodingUtil.SerializeCBOR(data)
 	if not serialized or serialized == "" then
 		return nil, "CBOR serialization failed"
 	end
 	
-	-- Determine if compression is beneficial
-	local flags = 0
-	local payload = serialized
+	-- Step 2: Compress with Deflate
+	local compressed = C_EncodingUtil.CompressString(
+		serialized,
+		Enum.CompressionMethod.Deflate,
+		Enum.CompressionLevel.OptimizeForSize
+	)
 	
-	if #serialized > COMPRESSION_THRESHOLD then
-		-- Guard: Check if compression API is available
-		if C_EncodingUtil.CompressString then
-			local compressed = C_EncodingUtil.CompressString(
-				serialized,
-				Enum.CompressionMethod.Deflate,
-				Enum.CompressionLevel.Default
-			)
-			
-			if compressed and #compressed < #serialized then
-				-- Compression was beneficial
-				payload = compressed
-				flags = bit.bor(flags, FLAG_COMPRESSED)
-			end
-			-- If compression failed or made it larger, use uncompressed
-		end
+	if not compressed or compressed == "" then
+		return nil, "Deflate compression failed"
 	end
 	
-	-- Build final message: [version:1][flags:1][payload:N]
-	local encoded = string.char(PROTOCOL_VERSION) .. string.char(flags) .. payload
+	-- Step 3: Encode as Base64 for safe transmission
+	local encoded = C_EncodingUtil.EncodeBase64(compressed)
+	if not encoded or encoded == "" then
+		return nil, "Base64 encoding failed"
+	end
+
+	local roughOriginalSize = #C_EncodingUtil.SerializeJSON(data)
+	DebugPrint(string.format("Encoded message: raw=%d bytes, serialized=%d bytes, compressed=%d bytes, encoded=%d bytes", roughOriginalSize, #serialized, #compressed, #encoded))
 	
 	return encoded, nil
 end
 
 --- Decode a wire-format string back into a Lua value
---- Automatically decompresses if needed
+--- Base64 decodes, decompresses, then deserializes CBOR
 --- @param encoded string The encoded message
 --- @return any|nil data The decoded data, or nil on failure
 --- @return string|nil error Error message if decoding failed
 function MessageCodec.Decode(encoded)
-	-- Guard: Check if CBOR API is available
+	-- Guard: Check if APIs are available
 	if not C_EncodingUtil or not C_EncodingUtil.DeserializeCBOR then
 		return nil, "C_EncodingUtil.DeserializeCBOR not available"
 	end
-
-	DebugPrint(tostring(not encoded) .. " --> " .. tostring(#encoded), "ff8800")
-	
-	-- Validate minimum message size (version + flags)
-	if not encoded or #encoded < 2 then
-		return nil, "Message too short (minimum 2 bytes)"
+	if not C_EncodingUtil.DecompressString then
+		return nil, "C_EncodingUtil.DecompressString not available"
+	end
+	if not C_EncodingUtil.DecodeBase64 then
+		return nil, "C_EncodingUtil.DecodeBase64 not available"
 	end
 	
-	-- Extract version and flags
-	local version = string.byte(encoded, 1)
-	local flags = string.byte(encoded, 2)
-	local payload = string.sub(encoded, 3)
-	
-	-- Check protocol version
-	if version ~= PROTOCOL_VERSION then
-		return nil, string.format("Unsupported protocol version %d (expected %d)", version, PROTOCOL_VERSION)
+	-- Validate we have data
+	if not encoded or encoded == "" then
+		return nil, "Empty message"
 	end
 	
-	-- Decompress if needed
-	local serialized = payload
-	if bit.band(flags, FLAG_COMPRESSED) ~= 0 then
-		-- Guard: Check if decompression API is available
-		if not C_EncodingUtil.DecompressString then
-			return nil, "C_EncodingUtil.DecompressString not available"
-		end
-		
-		local decompressed = C_EncodingUtil.DecompressString(
-			payload,
-			Enum.CompressionMethod.Deflate
-		)
-		
-		if not decompressed then
-			return nil, "Decompression failed"
-		end
-		
-		serialized = decompressed
+	-- Step 1: Decode Base64 to get compressed binary
+	local compressed = C_EncodingUtil.DecodeBase64(encoded)
+	if not compressed or compressed == "" then
+		return nil, "Base64 decoding failed"
 	end
 	
-	-- Deserialize from CBOR
-	local data = C_EncodingUtil.DeserializeCBOR(serialized)
+	-- Step 2: Decompress to get CBOR binary
+	local decompressed = C_EncodingUtil.DecompressString(
+		compressed,
+		Enum.CompressionMethod.Deflate
+	)
+	
+	if not decompressed or decompressed == "" then
+		return nil, "Deflate decompression failed"
+	end
+	
+	-- Step 3: Deserialize CBOR to get Lua table
+	local data = C_EncodingUtil.DeserializeCBOR(decompressed)
 	if data == nil then
 		return nil, "CBOR deserialization failed"
 	end
@@ -126,8 +118,6 @@ end
 --- @return table stats Statistics about encoding/decoding
 function MessageCodec.GetStats()
 	return {
-		protocolVersion = PROTOCOL_VERSION,
-		compressionThreshold = COMPRESSION_THRESHOLD,
 		features = {
 			cbor = (C_EncodingUtil and C_EncodingUtil.SerializeCBOR) ~= nil,
 			compression = (C_EncodingUtil and C_EncodingUtil.CompressString) ~= nil,

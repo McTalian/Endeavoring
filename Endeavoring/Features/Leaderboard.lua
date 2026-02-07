@@ -28,7 +28,12 @@ function Leaderboard.BuildFromActivityLog(activityLog, timeRange)
 	end
 
 	local now = time()
-	local cutoffTime = timeRange and (now - timeRange) or 0
+	local cutoffTime
+	if timeRange and timeRange > 0 then
+		cutoffTime = now - timeRange
+	else
+		cutoffTime = 0
+	end
 	local playerSum = {}
 
 	-- Aggregate by player name

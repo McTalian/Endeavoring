@@ -65,12 +65,28 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Message Optimization Complete ✅  
-**Next Phase**: Phase 4 (In-Game Testing) or Phase 2 (Options UI)
+**Current Phase**: Phase 4 (In-Game Testing)
+**Next Phase**: Phase 2 (Options UI) or Leaderboard UI
 
 See [Development Status](docs/development-status.md) for detailed progress tracking and roadmap.
 
 ### Recent Major Work (February 2026)
+
+**MessageCodec Bug Fix (Feb 7)** ✅
+- Fixed critical bug: WoW addon message API corrupts raw binary data
+- Root cause: Compressed binary contains patterns that break transmission
+- Solution: Three-step encoding (CBOR → Compress → Base64)
+- Base64 converts binary to safe ASCII for reliable transmission
+- Tested multiple approaches (plain CBOR, double-CBOR wrapping) before finding solution
+- Compression still effective: ~16% total size reduction (115→96 bytes typical)
+- Ready for Phase 4 in-game testing
+
+**Leaderboard POC (Untested)** 📊
+- CLI leaderboard via `/endeavoring leaderboard [all|today|week]`
+- Aggregates activity log by player with time filtering
+- Async event-driven data fetching pattern
+- Ready for UI integration (same pattern for panel)
+- Documentation: [testing-phase4.md](docs/testing-phase4.md)
 
 **Message Codec (CBOR + Compression)** ✅
 - Implemented CBOR serialization for structured, type-safe messages

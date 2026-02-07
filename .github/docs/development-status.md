@@ -1,6 +1,17 @@
 # Development Status
 
-**Last Updated**: February 6, 2026
+**Last Updated**: February 7, 2026
+
+## Recent Fix 🎉
+
+**MessageCodec Bug - RESOLVED** (Feb 7, 2026)
+- **Issue**: Raw binary data (compressed CBOR) corrupted during addon message transmission
+- **Root Cause**: WoW's addon message API has undocumented quirks with binary data patterns
+- **Solution**: Three-step encoding: CBOR → Deflate → Base64 (makes binary safe as ASCII)
+- **Result**: Reliable transmission with ~16% size reduction (typical: 115 raw → 96 encoded bytes)
+- **Testing**: Validated through multiple approaches (plain CBOR works, compression needs Base64)
+
+---
 
 ## Project Vision
 
@@ -113,60 +124,109 @@ Direct sync only works when both players are online simultaneously. Gossip proto
 - Offline updates eventually propagate to everyone
 - Network becomes self-healing
 
-### Phase 3.75: Message Codec (CBOR + Compression) ✅
+### Phase 3.75: Message Codec (CBOR + Compression + Base64) ✅
 
-**Status**: Complete
+**Status**: Complete (Bug Fixed Feb 7, 2026)
 
 **Problem Solved**:
-Manual string concatenation was inefficient, difficult to extend, and risked exceeding 255-byte message limit with 10+ alts. Needed structured serialization with compression for larger datasets.
+Manual string concatenation was inefficient, difficult to extend, and risked exceeding 255-byte message limit with 10+ alts. Needed structured serialization with compression for larger datasets. Additionally, raw binary data (even plain CBOR) has transmission issues through WoW's addon message API.
 
 **Goals**:
 - [x] Implement CBOR serialization for structured messages
-- [x] Add automatic compression for large payloads
-- [x] Protocol versioning for future evolution
-- [x] Minimize wire overhead with short message types
+- [x] Add compression for size reduction
+- [x] Ensure reliable transmission through WoW API (Base64 encoding)
+- [x] Message type embedded in payload (no string delimiters)
 - [x] Comprehensive error handling and validation
 
 **Completed Features**:
 - **`Services/MessageCodec.lua`** - Complete codec service
-  - CBOR serialization via `C_EncodingUtil.SerializeCBOR`
-  - Automatic Deflate compression for messages >100 bytes
-  - Protocol format: `[version:1][flags:1][payload:N]`
-  - Compression flag (bit 0) + 7 reserved flags for future use
+  - Three-step encoding: CBOR serialize → Deflate compress → Base64 encode
+  - Three-step decoding: Base64 decode → Deflate decompress → CBOR deserialize
+  - Base64 ensures binary data becomes safe ASCII characters
   - `Encode()` and `Decode()` with comprehensive error messages
-- **Updated `Services/Sync.lua`** - CBOR-only protocol
-  - Single-character message types: M, R, A, C (saves 7-12 bytes per message)
+  - Debug size reporting (verbose mode)
+- **Updated `Services/Sync.lua`** - Message type inside CBOR payload
+  - Message type stored in `data.type` field (inside CBOR, not as prefix)
+  - Single-character message types: M, R, A, C (wire efficiency)
   - Message size validation (255-byte hard limit)
   - Return code checking with detailed error messages
-  - 90% threshold warning for verbose debug
+  - Removed `ParsePayload()` helper (single decode path)
   - All V1 pipe-delimited code removed (clean break)
-- **Documentation**: [message-codec.md](../docs/message-codec.md)
 
-**Size Improvements**:
-- **Overhead**: 4 bytes total (type + delimiter + version + flags)
-- **10 characters**: ~350 bytes → ~140-210 bytes (40-60% reduction)
-- **20 characters**: ~700 bytes → ~280-420 bytes (fits in limit!)
-- **Type identifiers**: ~10 bytes saved per message vs full names
+**Size Profile** (typical MANIFEST message):
+- Raw (JSON equivalent): ~115 bytes
+- After CBOR: ~87 bytes (24% saved)
+- After compression: ~70 bytes (39% saved)
+- After Base64: ~96 bytes (16% total saved)
+- **Headroom**: 96/255 = 38% of limit
+
+**Bug Fix Journey** (Feb 7, 2026):
+1. **Original**: String prefix + CBOR binary → Corruption (null bytes treated as terminators)
+2. **Attempt**: Message type inside CBOR, no compression → Still corrupted
+3. **Attempt**: Always compress with flags byte → Decompression failed
+4. **Attempt**: Simplified always-compress pipeline → Decompression failed  
+5. **Test**: Plain CBOR only (no compression) → ✅ Worked!
+6. **Attempt**: Double-CBOR wrapping around compression → Failed
+7. **Solution**: CBOR → Compress → Base64 → ✅ Works!
+
+**Key Insight**: WoW's addon message API has undocumented issues with raw binary data patterns (especially compressed data). Base64 encoding solves this by converting everything to safe ASCII.
 
 **Error Handling (Defense in Depth)**:
-1. **Compression** - Prevents most size issues automatically
+1. **Compression** - Reduces message size significantly
 2. **Build-time warning** - Alerts during message construction (verbose)
 3. **Pre-send validation** - Blocks messages >255 bytes with clear error
 4. **Return code checking** - Catches all 12 API failure modes with details
 
 **Key Decisions**:
 - **CBOR over JSON**: Smaller, binary-efficient, better compression
-- **Auto-compression**: Transparent, triggered at 100-byte threshold
+- **Always compress**: Deterministic pipeline, no conditional logic
+- **Base64 required**: Only way to reliably transmit compressed data
+- **Type inside payload**: Avoids all string+binary mixing issues
 - **No backward compatibility**: 0 users, clean break acceptable
 - **Single-char types**: `MANIFEST` → `M` saves 7 bytes per message
-- **Version byte**: Enables future protocol evolution without breaking changes
 
 **What's NOT Implemented** (deferred to Phase 4):
 - Message chunking for 50+ character profiles (still exceeds limit after compression)
+- Conditional compression (would save ~10-20 bytes on tiny messages, not worth complexity)
+
+### Phase 3.8: Leaderboard POC 📊
+
+**Status**: Code Complete (Untested)
+
+**Summary**: CLI-based contribution leaderboard aggregates activity log by player.
+
+**Implementation**:
+- **Features/Leaderboard.lua** (114 lines)
+  - `BuildFromActivityLog()` - Aggregates tasks by player name
+  - `BuildEnriched()` - Adds BattleTag/alias mapping (stub for now)
+  - Time range filtering: All Time, Today (24h), This Week (7d)
+  - Sorting by total contribution (desc) with alphabetical tie-breaker
+- **Commands.lua** - Added `/endeavoring leaderboard [all|today|week]` (alias: `/endeavoring lb`)
+- **NeighborhoodAPI.lua** - Added `GetActivityLogInfo()` and `RequestActivityLog()` wrappers
+
+**Key Pattern**: Async event-driven data fetching
+```lua
+-- Register one-shot event handler
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
+frame:SetScript("OnEvent", function(self, event)
+  self:UnregisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
+  DisplayLeaderboard(timeRange)
+end)
+-- Request data
+ns.API.RequestActivityLog()
+```
+
+**Testing Status**: ❌ Not tested in-game (requires active Endeavor)
+
+**Next Steps**:
+1. Test CLI leaderboard with real activity data
+2. Integrate BattleTag mapping from sync profiles
+3. Create UI panel using same pattern (event-driven + loading spinner)
 
 ### Phase 4: Testing & Polish 📅
 
-**Status**: Future
+**Status**: Test Plan Documented
 
 **Goals**:
 - [ ] Test with multiple accounts/characters
@@ -320,22 +380,26 @@ Codebase is clean and well-organized:
 
 ### Immediate Priority: In-Game Testing (Phase 4)
 
-**Goal**: Validate message codec and gossip protocol with real data
+**Goal**: Validate complete sync protocol with real data across multiple accounts
 
 **Testing Plan**:
 1. Enable verbose debug mode: `/endeavoring sync verbose`
-2. Test with multiple characters per account (1, 5, 10, 20)
-3. Monitor message sizes and compression effectiveness
-4. Validate error messages appear correctly
-5. Test gossip propagation with multiple accounts
-6. Verify sync works across guild members
+2. Test message encoding/decoding with real profiles
+3. Verify Base64 encoding prevents transmission corruption
+4. Test with multiple characters per account (1, 5, 10, 20)
+5. Monitor message sizes and compression effectiveness
+6. Test gossip propagation with multiple accounts
+7. Verify sync works across guild members
+8. Test edge cases (special characters in names, multiple realms, etc.)
 
 **Success Criteria**:
+- ✅ Messages encode/decode successfully (Base64 fix working)
 - Messages stay well under 255-byte limit
-- Compression triggers appropriately
+- Compression provides meaningful size reduction
 - Clear error messages for any failures
 - Gossip spreads profiles to all online players
 - No Lua errors or stack traces
+- Size reporting in verbose mode shows accurate stats
 
 ### Secondary Priority: Options UI (Phase 2)
 

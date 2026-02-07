@@ -141,7 +141,7 @@ local function DisplayLeaderboard(timeRange)
 		print(string.format("  ... and %d more", #leaderboard - maxDisplay))
 	end
 	
-	print(INFO .. " Use: /endeavoring leaderboard [all|today|week]")
+	print(INFO .. " Use: /endeavoring leaderboard [all||today||week]")
 end
 
 --- Handle leaderboard command - show contribution rankings

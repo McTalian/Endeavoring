@@ -14,6 +14,7 @@ local DebugPrint = ns.DebugPrint
 local ADDON_PREFIX = "Ndvrng"
 local CHANNEL_GUILD = "GUILD"
 local MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit for addon messages
+local CHARS_PER_MESSAGE = 5     -- Max characters to send in one CHARS_UPDATE message
 
 -- Gossip configuration
 local GOSSIP_MAX_PROFILES_PER_MANIFEST = 3  -- Max profiles to gossip per MANIFEST received
@@ -55,25 +56,32 @@ function Sync.Init()
 	initialized = true
 end
 
---- Parse a pipe-delimited message
---- @param message string The raw message string
---- @return string|nil messageType The message type (e.g., "MANIFEST")
---- @return table|nil parts The message parts (excluding message type)
-local function ParseMessage(message)
+--- Parse an encoded message and extract message type
+--- Message type is embedded in the CBOR payload
+--- @param encoded string The encoded message
+--- @return string|nil messageType The message type (e.g., MSG_TYPE.MANIFEST)
+--- @return table|nil data The decoded message data (including type field)
+local function ParseMessage(encoded)
 ---@diagnostic disable-next-line: param-type-mismatch
-	if issecretvalue(message) or not message or message == "" then
+	if issecretvalue(encoded) or not encoded or encoded == "" then
 		return nil, nil
 	end
 	
-	-- Use WoW's strsplit to parse pipe-delimited message
-	local parts = strsplittable("|", message)
-	
-	if #parts < 1 then
+	-- Decode the CBOR payload
+	local data, err = ns.MessageCodec.Decode(encoded)
+	if not data then
+		DebugPrint(string.format("Failed to decode message: %s", err or "unknown error"), "ff0000")
 		return nil, nil
 	end
 	
-	local messageType = table.remove(parts, 1)
-	return messageType, parts
+	-- Extract message type from decoded data
+	local messageType = data.type
+	if not messageType or messageType == "" then
+		DebugPrint("Message missing type field", "ff0000")
+		return nil, nil
+	end
+	
+	return messageType, data
 end
 
 --- Validate a BattleTag format
@@ -105,41 +113,32 @@ local function ValidateTimestamp(timestamp)
 end
 
 --- Build a message with CBOR-encoded payload
+--- Message type is included in the CBOR payload to avoid string+binary mixing
 --- @param messageType string The message type (e.g., MSG_TYPE.MANIFEST)
 --- @param data table The data to encode
---- @return string|nil message The complete message, or nil on encoding failure
+--- @return string|nil message The complete encoded message, or nil on encoding failure
 local function BuildMessage(messageType, data)
+	-- Include message type in the payload
+	data.type = messageType
+	
 	local encoded, err = ns.MessageCodec.Encode(data)
 	if not encoded then
 		DebugPrint(string.format("Failed to encode message: %s", err or "unknown error"), "ff0000")
 		return nil
 	end
-	
-	local message = messageType .. "|" .. encoded
-	
+
 	-- Warn if message is approaching or exceeding size limit
-	if #message > MESSAGE_SIZE_LIMIT then
-		DebugPrint(string.format("WARNING: Built message size (%d bytes) exceeds limit (%d bytes)!", #message, MESSAGE_SIZE_LIMIT), "ff0000")
-	elseif #message > (MESSAGE_SIZE_LIMIT * 0.9) then
+	if #encoded > MESSAGE_SIZE_LIMIT then
+		DebugPrint(string.format("WARNING: Built message size (%d bytes) exceeds limit (%d bytes)!", #encoded, MESSAGE_SIZE_LIMIT), "ff0000")
+	elseif #encoded > (MESSAGE_SIZE_LIMIT * 0.9) then
 		-- Warn if within 10% of limit
-		DebugPrint(string.format("WARNING: Built message size (%d bytes) is close to limit (%d bytes)", #message, MESSAGE_SIZE_LIMIT), "ff8800")
+		DebugPrint(string.format("WARNING: Built message size (%d bytes) is close to limit (%d bytes)", #encoded, MESSAGE_SIZE_LIMIT), "ff8800")
 	end
 	
-	return message
+	return encoded
 end
 
---- Parse a message and decode the CBOR payload
---- @param encoded string The encoded payload (after message type)
---- @return table|nil data The decoded data, or nil on failure
-local function ParsePayload(encoded)
-	local data, err = ns.MessageCodec.Decode(encoded)
-	if not data then
-		DebugPrint(string.format("Failed to decode message: %s", err or "unknown error"), "ff0000")
-		return nil
-	end
-	
-	return data
-end
+
 
 --- Send a message via addon communication
 --- @param message string The message to send
@@ -152,6 +151,15 @@ local function SendMessage(message, channel, target)
 	end
 	
 	channel = channel or CHANNEL_GUILD
+	
+	-- Pre-flight validation: check for chat messaging lockdown (instances, restricted zones)
+	if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
+		local isRestricted, reason = C_ChatInfo.InChatMessagingLockdown()
+		if isRestricted then
+			DebugPrint(string.format("Skipping message send - chat messaging lockdown active (reason: %s)", tostring(reason or "unknown")), "ff8800")
+			return false
+		end
+	end
 	
 	-- Pre-flight validation: check message size
 	if #message > MESSAGE_SIZE_LIMIT then
@@ -179,6 +187,7 @@ local function SendMessage(message, channel, target)
 				[Enum.SendAddonMessageResult.ChannelThrottle] = "ChannelThrottle",
 				[Enum.SendAddonMessageResult.GeneralError] = "GeneralError",
 				[Enum.SendAddonMessageResult.NotInGuild] = "NotInGuild",
+				[Enum.SendAddonMessageResult.AddOnMessageLockdown] = "AddOnMessageLockdown",
 				[Enum.SendAddonMessageResult.TargetOffline] = "TargetOffline",
 			}
 			local errorName = errorNames[result] or "Unknown"
@@ -243,6 +252,48 @@ local function SelectProfilesForGossip(targetBattleTag, maxCount)
 	return selected
 end
 
+--- Send CHARS_UPDATE message(s), chunking if necessary
+--- @param battleTag string The BattleTag of the profile
+--- @param characters table Array of characters to send
+--- @param channel string Channel to send on
+--- @param target string|nil Target player (for whispers)
+--- @return boolean success Whether all messages were sent successfully
+local function SendCharsUpdate(battleTag, characters, channel, target)
+	local totalChars = #characters
+	if totalChars == 0 then
+		return true
+	end
+	
+	-- Chunk characters into manageable pieces
+	for i = 1, totalChars, CHARS_PER_MESSAGE do
+		local chunk = {}
+		for j = i, math.min(i + CHARS_PER_MESSAGE - 1, totalChars) do
+			table.insert(chunk, characters[j])
+		end
+		
+		local charsData = {
+			battleTag = battleTag,
+			characters = chunk,
+		}
+		
+		local message = BuildMessage(MSG_TYPE.CHARS_UPDATE, charsData)
+		if not message then
+			print(ERROR .. " Failed to build CHARS_UPDATE message")
+			return false
+		end
+		
+		local chunkNum = math.floor((i - 1) / CHARS_PER_MESSAGE) + 1
+		local totalChunks = math.ceil(totalChars / CHARS_PER_MESSAGE)
+		DebugPrint(string.format("Sending CHARS_UPDATE chunk %d/%d (%d bytes, %d chars)", chunkNum, totalChunks, #message, #chunk))
+		
+		if not SendMessage(message, channel, target) then
+			return false
+		end
+	end
+	
+	return true
+end
+
 --- Gossip cached profiles to a player
 --- @param targetBattleTag string The BattleTag to gossip to
 --- @param targetCharacter string The character name to send whispers to
@@ -270,7 +321,7 @@ local function GossipProfilesToPlayer(targetBattleTag, targetCharacter)
 			SendMessage(aliasMessage, "WHISPER", targetCharacter)
 		end
 		
-		-- Send characters update
+		-- Send characters update (with chunking if needed)
 		local characters = {}
 		if profile.characters then
 			for _, char in pairs(profile.characters) do
@@ -283,14 +334,7 @@ local function GossipProfilesToPlayer(targetBattleTag, targetCharacter)
 		end
 		
 		if #characters > 0 then
-			local charsData = {
-				battleTag = battleTag,
-				characters = characters,
-			}
-			local charsMessage = BuildMessage(MSG_TYPE.CHARS_UPDATE, charsData)
-			if charsMessage then
-				SendMessage(charsMessage, "WHISPER", targetCharacter)
-			end
+			SendCharsUpdate(battleTag, characters, "WHISPER", targetCharacter)
 		end
 		
 		-- Update gossip tracking (mark as gossiped to this BattleTag)
@@ -302,9 +346,8 @@ end
 
 --- Handle incoming MANIFEST message (CBOR format)
 --- @param sender string The sender's character name
---- @param encoded string The CBOR-encoded payload
-local function HandleManifest(sender, encoded)
-	local data = ParsePayload(encoded)
+--- @param data table The decoded message data
+local function HandleManifest(sender, data)
 	if not data then
 		return
 	end
@@ -326,6 +369,7 @@ local function HandleManifest(sender, encoded)
 	-- Ignore our own manifests
 	local myBattleTag = ns.DB.GetMyBattleTag()
 	if battleTag == myBattleTag then
+		DebugPrint("Silly goose! Received our own MANIFEST, ignoring", "ff8800")
 		return
 	end
 	
@@ -371,9 +415,8 @@ end
 
 --- Handle incoming REQUEST_CHARS message (CBOR format)
 --- @param sender string The sender's character name
---- @param encoded string The CBOR-encoded payload
-local function HandleRequestChars(sender, encoded)
-	local data = ParsePayload(encoded)
+--- @param data table The decoded message data
+local function HandleRequestChars(sender, data)
 	if not data then
 		return
 	end
@@ -412,32 +455,20 @@ local function HandleRequestChars(sender, encoded)
 		})
 	end
 	
-	-- Send CHARS_UPDATE
+	-- Send CHARS_UPDATE (with chunking if needed)
 	local myProfile = ns.DB.GetMyProfile()
 	if not myProfile then
 		return
 	end
 	
-	local responseData = {
-		battleTag = myProfile.battleTag,
-		characters = chars,
-	}
-	
-	local message = BuildMessage(MSG_TYPE.CHARS_UPDATE, responseData)
-	if not message then
-		print(ERROR .. " Failed to build CHARS_UPDATE message")
-		return
-	end
-	
-	DebugPrint(string.format("Sending CHARS_UPDATE (%d bytes, %d chars) to %s", #message, #chars, sender))
-	SendMessage(message, "WHISPER", sender)
+	DebugPrint(string.format("Sending CHARS_UPDATE (%d chars total) to %s", #chars, sender))
+	SendCharsUpdate(myProfile.battleTag, chars, "WHISPER", sender)
 end
 
 --- Handle incoming ALIAS_UPDATE message (CBOR format)
 --- @param sender string The sender's character name
---- @param encoded string The CBOR-encoded payload  
-local function HandleAliasUpdate(sender, encoded)
-	local data = ParsePayload(encoded)
+--- @param data table The decoded message data
+local function HandleAliasUpdate(sender, data)
 	if not data then
 		return
 	end
@@ -465,9 +496,8 @@ end
 
 --- Handle incoming CHARS_UPDATE message (CBOR format)
 --- @param sender string The sender's character name
---- @param encoded string The CBOR-encoded payload
-local function HandleCharsUpdate(sender, encoded)
-	local data = ParsePayload(encoded)
+--- @param data table The decoded message data
+local function HandleCharsUpdate(sender, data)
 	if not data then
 		return
 	end
@@ -508,25 +538,25 @@ end
 --- Route message to appropriate handler
 --- @param messageType string The message type
 --- @param sender string The sender's character name
---- @param parts table The message parts
-local function RouteMessage(messageType, sender, parts)
+--- @param data table The decoded message data
+local function RouteMessage(messageType, sender, data)
 	DebugPrint(string.format("Received message of type %s from %s", messageType, sender))
 	
-	-- All handlers use CBOR format
+	-- Route to appropriate handler
 	if messageType == MSG_TYPE.MANIFEST then
-		HandleManifest(sender, parts[1])
+		HandleManifest(sender, data)
 	elseif messageType == MSG_TYPE.REQUEST_CHARS then
-		HandleRequestChars(sender, parts[1])
+		HandleRequestChars(sender, data)
 	elseif messageType == MSG_TYPE.ALIAS_UPDATE then
-		HandleAliasUpdate(sender, parts[1])
+		HandleAliasUpdate(sender, data)
 	elseif messageType == MSG_TYPE.CHARS_UPDATE then
-		HandleCharsUpdate(sender, parts[1])
+		HandleCharsUpdate(sender, data)
 	end
 end
 
 --- Handle incoming addon message
 --- @param prefix string The addon prefix
---- @param message string The message content
+--- @param message string The encoded message content
 --- @param channel string The channel the message was sent on
 --- @param sender string The sender's character name
 local function OnAddonMessage(prefix, message, channel, sender)
@@ -534,12 +564,12 @@ local function OnAddonMessage(prefix, message, channel, sender)
 		return
 	end
 	
-	local messageType, parts = ParseMessage(message)
-	if not messageType or not parts then
+	local messageType, data = ParseMessage(message)
+	if not messageType or not data then
 		return
 	end
 	
-	RouteMessage(messageType, sender, parts)
+	RouteMessage(messageType, sender, data)
 end
 
 --- Broadcast MANIFEST to guild
