@@ -18,6 +18,10 @@ Bootstrap.lua
 Services/PlayerInfo.lua
 Services/MessageCodec.lua
 Data/Database.lua
+Sync/CharacterCache.lua
+Sync/Coordinator.lua
+Sync/Gossip.lua
+Sync/Protocol.lua
 Services/NeighborhoodAPI.lua
 Services/Sync.lua
 Features/Header.lua

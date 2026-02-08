@@ -133,7 +133,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		if success then
 			-- Broadcast manifest on true login (not reload)
 			if isLogin then
-				ns.Sync.SendManifestDebounced()
+				ns.Coordinator.SendManifestDebounced()
 			end
 		end
 		
@@ -160,7 +160,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 	
 	if event == "GUILD_ROSTER_UPDATE" then
 		-- Debounced broadcast on guild roster changes (with random delay)
-		ns.Sync.OnGuildRosterUpdate()
+		ns.Coordinator.OnGuildRosterUpdate()
 	end
 end)
 

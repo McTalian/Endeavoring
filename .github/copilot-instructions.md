@@ -72,6 +72,15 @@ See [Development Status](docs/development-status.md) for detailed progress track
 
 ### Recent Major Work (February 2026)
 
+**Code Refactoring: Sync Module Extraction (Feb 7)** ✅
+- **Major architectural cleanup** of Services/Sync.lua (858 → 512 lines, 40% reduction)
+- **Created Sync/ folder** for sync protocol components (CharacterCache, Coordinator, Gossip)
+- **CharacterCache.lua (79 lines)**: Character→BattleTag O(1) lookup cache, reusable for leaderboard
+- **Coordinator.lua (199 lines)**: Orchestration, timing, heartbeat, roster throttling, chunking
+- **Gossip.lua (196 lines)**: Gossip protocol logic with profile selection and tracking
+- **Benefits**: Single responsibility, easier testing, better maintainability, clear layering
+- **Next**: Extract Protocol.lua (~250 lines) to complete refactoring
+
 **Phase 4 Enhancements: Gossip Protocol & Performance (Feb 7)** ✅
 - **Roster Throttling**: Time-based sampling (60s min interval) + heartbeat manifests (every 5 min)
 - **Sync Stats Command**: `/endeavoring sync stats` shows timing, next heartbeat, roster windows
@@ -142,6 +151,7 @@ See [Development Status](docs/development-status.md) for detailed progress track
 The addon follows a clear separation of concerns:
 
 - **Services/** - WoW API abstractions (anything that could change between patches)
+- **Sync/** - Sync protocol components (CharacterCache, Coordinator, Gossip, Protocol)
 - **Data/** - Data persistence and access (SavedVariables management)
 - **Features/** - UI components and feature implementations  
 - **Integrations/** - Optional hooks into other addons or Blizzard frames

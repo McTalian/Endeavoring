@@ -20,7 +20,7 @@ local function HandleAlias(args)
 		if ns.DB.SetPlayerAlias(args) then
 			print(INFO .. " Alias set to: " .. args)
 			-- Broadcast updated manifest
-			ns.Sync.SendManifestDebounced()
+			ns.Coordinator.SendManifestDebounced()
 		else
 			print(ERROR .. " Failed to set alias. Make sure you're logged in.")
 		end
@@ -37,7 +37,7 @@ end
 
 --- Handle sync broadcast command - force MANIFEST broadcast
 local function HandleSyncBroadcast()
-	ns.Sync.SendManifest()
+	ns.Coordinator.SendManifest()
 	print(INFO .. " Manually triggered MANIFEST broadcast")
 end
 
@@ -87,7 +87,7 @@ end
 
 --- Handle sync gossip command - show gossip statistics
 local function HandleSyncGossip()
-	local stats = ns.Sync.GetGossipStats()
+	local stats = ns.Gossip.GetStats()
 	print(INFO .. " === Gossip Statistics ===")
 	print(string.format("  Total players gossiped to: %d", stats.totalPlayers))
 	print(string.format("  Total gossips sent: %d", stats.totalGossips))
@@ -102,7 +102,7 @@ end
 
 --- Handle sync stats command - show timing statistics
 local function HandleSyncStats()
-	local stats = ns.Sync.GetSyncStats()
+	local stats = ns.Coordinator.GetSyncStats()
 	print(INFO .. " === Sync Timing Statistics ===")
 	
 	-- Format time durations
