@@ -12,6 +12,10 @@ You are preparing to hand off this development session to a fresh agent context.
 1. **Update project documentation** with accomplishments from this session
 2. **Generate a handoff summary** for seamless continuation in a new session
 
+**GOLDEN RULES**:
+- Only include information that is directly relevant to the work done in this session. The summary should be comprehensive but concise, focusing on what the next agent needs to know to pick up where you left off without having to read through the entire conversation history.
+- Only include the PARKED SESSION HANDOFF summary in the final output for easier copy and paste. Do not include the step-by-step process or any other commentary.
+
 ## Step 1: Review Current Session
 
 Analyze the conversation history and identify:

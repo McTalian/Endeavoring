@@ -16,6 +16,10 @@ local CHANNEL_GUILD = "GUILD"
 local MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit for addon messages
 local CHARS_PER_MESSAGE = 5     -- Max characters to send in one CHARS_UPDATE message
 
+-- Guild roster manifest throttling
+local GUILD_ROSTER_MIN_INTERVAL = 60  -- Min seconds between roster-triggered manifests
+local MANIFEST_HEARTBEAT_INTERVAL = 300  -- Send manifest every 5 minutes if no other activity
+
 -- Gossip configuration
 local GOSSIP_MAX_PROFILES_PER_MANIFEST = 3  -- Max profiles to gossip per MANIFEST received
 
@@ -31,12 +35,91 @@ local MSG_TYPE = {
 -- State
 local initialized = false
 local lastManifestTime = 0
+local lastRosterManifestTime = 0  -- Track roster-triggered manifests separately
 local manifestDebounceTimer = nil
 local guildRosterDebounceTimer = nil
+local guildRosterManifestTimer = nil
+local heartbeatTimer = nil
 -- Gossip tracking: lastGossip[senderBattleTag][profileBattleTag] = true
 -- Tracks which profiles we've gossiped to which players THIS SESSION
 -- Per-session only (not persisted) - resets on reload/relog
 local lastGossip = {}
+-- Character-to-BattleTag reverse lookup cache for O(1) lookups
+-- Cache is rebuilt on demand when stale
+local characterToBattleTagCache = {}
+local cacheIsStale = true
+
+--- Rebuild character-to-BattleTag cache
+local function RebuildCharacterCache()
+	characterToBattleTagCache = {}
+	local allProfiles = ns.DB.GetAllProfiles()
+	
+	for battleTag, profile in pairs(allProfiles) do
+		if profile.characters then
+			for _, char in pairs(profile.characters) do
+				characterToBattleTagCache[char.name] = battleTag
+			end
+		end
+	end
+	
+	cacheIsStale = false
+end
+
+--- Look up a player's BattleTag by character name (cached)
+--- @param characterName string The character name to search for
+--- @return string|nil battleTag The BattleTag if found, nil otherwise
+local function FindBattleTagByCharacter(characterName)
+	if cacheIsStale then
+		RebuildCharacterCache()
+	end
+	
+	return characterToBattleTagCache[characterName]
+end
+
+--- Mark cache as stale (call when profile data changes)
+local function InvalidateCharacterCache()
+	cacheIsStale = true
+end
+
+--- Initialize gossip tracking for a player
+--- @param battleTag string The BattleTag to initialize tracking for
+local function InitializeGossipTracking(battleTag)
+	if not lastGossip[battleTag] then
+		lastGossip[battleTag] = {}
+	end
+end
+
+--- Mark that a player knows about a profile
+--- @param knowerBattleTag string The BattleTag of the player who knows
+--- @param profileBattleTag string The BattleTag of the profile they know about
+local function MarkProfileAsKnownBy(knowerBattleTag, profileBattleTag)
+	InitializeGossipTracking(knowerBattleTag)
+	lastGossip[knowerBattleTag][profileBattleTag] = true
+end
+
+--- Check if we've already gossiped a profile to a player
+--- @param targetBattleTag string The BattleTag we might gossip to
+--- @param profileBattleTag string The profile BattleTag we might gossip
+--- @return boolean hasGossiped Whether we've already gossiped this profile
+local function HasGossipedProfile(targetBattleTag, profileBattleTag)
+	return lastGossip[targetBattleTag] and lastGossip[targetBattleTag][profileBattleTag] or false
+end
+
+--- Start heartbeat timer for periodic manifests
+local function StartHeartbeat()
+	if heartbeatTimer then
+		return
+	end
+	
+	-- Check every minute if we need to send a heartbeat manifest
+	heartbeatTimer = C_Timer.NewTicker(60, function()
+		local now = time()
+		if now - lastManifestTime >= MANIFEST_HEARTBEAT_INTERVAL then
+			DebugPrint(string.format("Heartbeat: No manifest in %d seconds, sending one", now - lastManifestTime))
+			Sync.SendManifest()
+		end
+	end)
+end
 
 --- Initialize the sync service
 function Sync.Init()
@@ -52,6 +135,9 @@ function Sync.Init()
 			return
 		end
 	end
+	
+	-- Start heartbeat timer for periodic sync
+	StartHeartbeat()
 	
 	initialized = true
 end
@@ -216,22 +302,23 @@ local function SelectProfilesForGossip(targetBattleTag, maxCount)
 	local candidates = {}
 	
 	-- Initialize gossip tracking for this player if needed
-	if not lastGossip[targetBattleTag] then
-		lastGossip[targetBattleTag] = {}
-	end
+	InitializeGossipTracking(targetBattleTag)
 	
 	-- Build list of profiles eligible for gossip
 	for battleTag, profile in pairs(allProfiles) do
-		-- Skip our own profile (already sent in MANIFEST)
-		if battleTag ~= myBattleTag then
+		if
+			-- Skip our own profile (already sent in MANIFEST)
+			battleTag ~= myBattleTag and
+			-- Skip the recipient's profile (they already know their own data)
+			battleTag ~= targetBattleTag and
 			-- Only gossip if we haven't gossiped this profile to this player this session
-			if not lastGossip[targetBattleTag][battleTag] then
-				table.insert(candidates, {
-					battleTag = battleTag,
-					profile = profile,
-					lastUpdate = math.max(profile.aliasUpdatedAt or 0, profile.charsUpdatedAt or 0)
-				})
-			end
+			not HasGossipedProfile(targetBattleTag, battleTag)
+		then 
+			table.insert(candidates, {
+				battleTag = battleTag,
+				profile = profile,
+				lastUpdate = math.max(profile.aliasUpdatedAt or 0, profile.charsUpdatedAt or 0)
+			})
 		end
 	end
 	
@@ -255,10 +342,11 @@ end
 --- Send CHARS_UPDATE message(s), chunking if necessary
 --- @param battleTag string The BattleTag of the profile
 --- @param characters table Array of characters to send
+--- @param charsUpdatedAt number The charsUpdatedAt timestamp for this profile
 --- @param channel string Channel to send on
 --- @param target string|nil Target player (for whispers)
 --- @return boolean success Whether all messages were sent successfully
-local function SendCharsUpdate(battleTag, characters, channel, target)
+local function SendCharsUpdate(battleTag, characters, charsUpdatedAt, channel, target)
 	local totalChars = #characters
 	if totalChars == 0 then
 		return true
@@ -274,6 +362,7 @@ local function SendCharsUpdate(battleTag, characters, channel, target)
 		local charsData = {
 			battleTag = battleTag,
 			characters = chunk,
+			charsUpdatedAt = charsUpdatedAt,
 		}
 		
 		local message = BuildMessage(MSG_TYPE.CHARS_UPDATE, charsData)
@@ -308,6 +397,7 @@ local function GossipProfilesToPlayer(targetBattleTag, targetCharacter)
 	
 	for _, entry in ipairs(profiles) do
 		local battleTag = entry.battleTag
+		---@type Profile
 		local profile = entry.profile
 		
 		-- Send alias update
@@ -334,11 +424,11 @@ local function GossipProfilesToPlayer(targetBattleTag, targetCharacter)
 		end
 		
 		if #characters > 0 then
-			SendCharsUpdate(battleTag, characters, "WHISPER", targetCharacter)
+			SendCharsUpdate(battleTag, characters, profile.charsUpdatedAt or 0, "WHISPER", targetCharacter)
 		end
 		
 		-- Update gossip tracking (mark as gossiped to this BattleTag)
-		lastGossip[targetBattleTag][battleTag] = true
+		MarkProfileAsKnownBy(targetBattleTag, battleTag)
 		
 		DebugPrint(string.format("  Gossiped %s (%s) with %d chars", battleTag, profile.alias, #characters))
 	end
@@ -462,7 +552,7 @@ local function HandleRequestChars(sender, data)
 	end
 	
 	DebugPrint(string.format("Sending CHARS_UPDATE (%d chars total) to %s", #chars, sender))
-	SendCharsUpdate(myProfile.battleTag, chars, "WHISPER", sender)
+	SendCharsUpdate(myProfile.battleTag, chars, myProfile.charsUpdatedAt, "WHISPER", sender)
 end
 
 --- Handle incoming ALIAS_UPDATE message (CBOR format)
@@ -487,6 +577,40 @@ local function HandleAliasUpdate(sender, data)
 		return
 	end
 	
+	-- Try to identify sender's BattleTag for gossip tracking
+	local senderBattleTag = FindBattleTagByCharacter(sender)
+	
+	-- Check if we have this profile and if it's stale
+	local existingProfile = ns.DB.GetProfile(battleTag)
+	if existingProfile then
+		-- Track that sender knows about this profile
+		if senderBattleTag then
+			MarkProfileAsKnownBy(senderBattleTag, battleTag)
+			DebugPrint(string.format("Tracked: %s knows about %s", senderBattleTag, battleTag))
+		end
+		
+		-- Check if sender has stale data
+		if existingProfile.aliasUpdatedAt and existingProfile.aliasUpdatedAt > aliasUpdatedAt then
+			DebugPrint(string.format("Sender has stale alias for %s (theirs: %d, ours: %d), gossiping back", 
+				battleTag, aliasUpdatedAt, existingProfile.aliasUpdatedAt))
+			
+			-- Gossip back the newer version
+			if senderBattleTag then
+				local aliasData = {
+					battleTag = battleTag,
+					alias = existingProfile.alias,
+					aliasUpdatedAt = existingProfile.aliasUpdatedAt,
+				}
+				local message = BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
+				if message then
+					SendMessage(message, "WHISPER", sender)
+					DebugPrint(string.format("Sent updated alias for %s back to %s", battleTag, sender))
+				end
+			end
+			return  -- Don't update with stale data
+		end
+	end
+	
 	-- Update alias in database
 	local success = ns.DB.UpdateProfileAlias(battleTag, alias, aliasUpdatedAt)
 	if success then
@@ -504,6 +628,7 @@ local function HandleCharsUpdate(sender, data)
 	
 	local battleTag = data.battleTag
 	local characters = data.characters or {}
+	local senderCharsUpdatedAt = data.charsUpdatedAt or 0
 	
 	if not ValidateBattleTag(battleTag) then
 		return
@@ -513,6 +638,35 @@ local function HandleCharsUpdate(sender, data)
 	local myBattleTag = ns.DB.GetMyBattleTag()
 	if battleTag == myBattleTag then
 		return
+	end
+	
+	-- Try to identify sender's BattleTag for gossip tracking
+	local senderBattleTag = FindBattleTagByCharacter(sender)
+	
+	-- Check if we have this profile
+	local existingProfile = ns.DB.GetProfile(battleTag)
+	if existingProfile then
+		-- Track that sender knows about this profile
+		if senderBattleTag then
+			MarkProfileAsKnownBy(senderBattleTag, battleTag)
+			DebugPrint(string.format("Tracked: %s knows about %s", senderBattleTag, battleTag))
+		end
+		
+		-- Check if sender has stale data by comparing charsUpdatedAt timestamps
+		if existingProfile.charsUpdatedAt and existingProfile.charsUpdatedAt > senderCharsUpdatedAt then
+			DebugPrint(string.format("Sender has stale characters for %s (theirs: %d, ours: %d), gossiping back",
+				battleTag, senderCharsUpdatedAt, existingProfile.charsUpdatedAt))
+			
+			if senderBattleTag then
+				-- Send all characters added after their timestamp
+				local newerChars = ns.DB.GetProfileCharactersAddedAfter(battleTag, senderCharsUpdatedAt)
+				
+				if #newerChars > 0 then
+					SendCharsUpdate(battleTag, newerChars, existingProfile.charsUpdatedAt, "WHISPER", sender)
+					DebugPrint(string.format("Sent %d updated character(s) for %s back to %s", #newerChars, battleTag, sender))
+				end
+			end
+		end
 	end
 	
 	-- Validate and add characters
@@ -531,6 +685,8 @@ local function HandleCharsUpdate(sender, data)
 		local success = ns.DB.AddCharactersToProfile(battleTag, validChars)
 		if success then
 			DebugPrint(string.format("Updated %d character(s) for %s", #validChars, battleTag))
+			-- Invalidate cache since we added characters
+			InvalidateCharacterCache()
 		end
 	end
 end
@@ -613,19 +769,32 @@ function Sync.SendManifestDebounced()
 	end)
 end
 
---- Handle guild roster update with debouncing and random delay
+--- Handle guild roster update with time-based sampling and debouncing
 function Sync.OnGuildRosterUpdate()
+	-- Time-based sampling: Only allow roster events to trigger manifest once per interval
+	local now = time()
+	if now - lastRosterManifestTime < GUILD_ROSTER_MIN_INTERVAL then
+		DebugPrint(string.format("Roster event ignored (last roster manifest %ds ago, min interval %ds)", now - lastRosterManifestTime, GUILD_ROSTER_MIN_INTERVAL))
+		return
+	end
+	
 	-- Cancel any pending roster update
 	if guildRosterDebounceTimer then
 		guildRosterDebounceTimer:Cancel()
+	end
+
+	if guildRosterManifestTimer then
+		guildRosterManifestTimer:Cancel()
 	end
 	
 	-- Debounce for 5 seconds, then schedule manifest with random delay
 	guildRosterDebounceTimer = C_Timer.NewTimer(5, function()
 		-- Schedule manifest broadcast with random delay (2-10 seconds)
 		local randomDelay = math.random(2, 10)
-		C_Timer.NewTimer(randomDelay, function()
+		guildRosterManifestTimer = C_Timer.NewTimer(randomDelay, function()
 			Sync.SendManifest()
+			lastRosterManifestTime = time()  -- Update roster manifest timestamp
+			guildRosterManifestTimer = nil
 		end)
 		guildRosterDebounceTimer = nil
 	end)
@@ -654,6 +823,22 @@ function Sync.GetGossipStats()
 		totalPlayers = totalPlayers,
 		totalGossips = totalGossips,
 		gossipByPlayer = gossipByPlayer,
+	}
+end
+
+--- Get sync timing statistics for debugging
+--- @return table stats Timing statistics for manifest broadcasts
+function Sync.GetSyncStats()
+	local now = time()
+	return {
+		lastManifestTime = lastManifestTime,
+		timeSinceLastManifest = now - lastManifestTime,
+		lastRosterManifestTime = lastRosterManifestTime,
+		timeSinceLastRosterManifest = now - lastRosterManifestTime,
+		rosterMinInterval = GUILD_ROSTER_MIN_INTERVAL,
+		heartbeatInterval = MANIFEST_HEARTBEAT_INTERVAL,
+		nextHeartbeatIn = math.max(0, MANIFEST_HEARTBEAT_INTERVAL - (now - lastManifestTime)),
+		nextRosterWindowIn = math.max(0, GUILD_ROSTER_MIN_INTERVAL - (now - lastRosterManifestTime)),
 	}
 end
 

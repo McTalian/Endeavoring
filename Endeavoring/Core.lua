@@ -140,7 +140,6 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		ns.Commands.Register()
 		local integration = ns.Integrations and ns.Integrations.HousingDashboard
 		if integration and integration.EnsureLoaded and integration.EnsureLoaded() then
-			DebugPrint("Detected " .. integration.GetAddonName() .. " loaded on PLAYER_ENTERING_WORLD, registering button hook")
 			integration.RegisterButtonHook()
 		end
 		return
@@ -150,7 +149,6 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		local integration = ns.Integrations and ns.Integrations.HousingDashboard
 		local addonNameLoaded = ...
 		if integration and addonNameLoaded == integration.GetAddonName() and integration.EnsureLoaded() then
-			DebugPrint("Detected " .. integration.GetAddonName() .. " loaded, registering button hook")
 			integration.RegisterButtonHook()
 		end
 		return

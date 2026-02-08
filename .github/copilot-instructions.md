@@ -65,12 +65,29 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Phase 4 (In-Game Testing)
+**Current Phase**: Phase 4 (In-Game Testing - Ongoing)
 **Next Phase**: Phase 2 (Options UI) or Leaderboard UI
 
 See [Development Status](docs/development-status.md) for detailed progress tracking and roadmap.
 
 ### Recent Major Work (February 2026)
+
+**Phase 4 Enhancements: Gossip Protocol & Performance (Feb 7)** ✅
+- **Roster Throttling**: Time-based sampling (60s min interval) + heartbeat manifests (every 5 min)
+- **Sync Stats Command**: `/endeavoring sync stats` shows timing, next heartbeat, roster windows
+- **Gossip Improvements**: Skip recipient's profile, track sender knowledge, bidirectional correction
+- **Performance**: O(1) character→BattleTag cache, gossip helper functions, charsUpdatedAt in messages
+- **Smart Delta Sync**: Compare timestamps first, only send newer characters using `GetProfileCharactersAddedAfter()`
+
+**Phase 4 Testing: Chunking & Lockdown Handling (Feb 7)** ✅
+- Multi-account testing revealed message size limit hit at 9 characters (~260 bytes)
+- Implemented character list chunking: 5 characters per CHARS_UPDATE message
+- Added `SendCharsUpdate()` helper with automatic chunking and progress tracking
+- Discovered error code 11 (AddOnMessageLockdown) in instances/restricted zones
+- Added pre-flight lockdown check using `C_ChatInfo.InChatMessagingLockdown()`
+- Prevents message send attempts in restricted areas (no more error spam)
+- Validated chunking works correctly: 9 chars → 2 chunks, received properly
+- Backward compatible: Old builds receive chunked messages without issues
 
 **MessageCodec Bug Fix (Feb 7)** ✅
 - Fixed critical bug: WoW addon message API corrupts raw binary data

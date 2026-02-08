@@ -100,6 +100,31 @@ local function HandleSyncGossip()
 	end
 end
 
+--- Handle sync stats command - show timing statistics
+local function HandleSyncStats()
+	local stats = ns.Sync.GetSyncStats()
+	print(INFO .. " === Sync Timing Statistics ===")
+	
+	-- Format time durations
+	local function formatDuration(seconds)
+		if seconds < 60 then
+			return string.format("%ds", seconds)
+		end
+		local minutes = math.floor(seconds / 60)
+		local secs = seconds % 60
+		return string.format("%dm %ds", minutes, secs)
+	end
+	
+	print(string.format("  Last manifest: %s ago", formatDuration(stats.timeSinceLastManifest)))
+	print(string.format("  Last roster manifest: %s ago", formatDuration(stats.timeSinceLastRosterManifest)))
+	print("")
+	print(string.format("  Roster min interval: %s", formatDuration(stats.rosterMinInterval)))
+	print(string.format("  Next roster window: %s", formatDuration(stats.nextRosterWindowIn)))
+	print("")
+	print(string.format("  Heartbeat interval: %s", formatDuration(stats.heartbeatInterval)))
+	print(string.format("  Next heartbeat: %s", formatDuration(stats.nextHeartbeatIn)))
+end
+
 --- Display leaderboard results
 --- @param timeRange number The time range filter
 local function DisplayLeaderboard(timeRange)
@@ -174,8 +199,9 @@ local function HandleSyncHelp()
 	print(INFO .. " Sync commands:")
 	print("  /endeavoring sync broadcast - Force MANIFEST broadcast")
 	print("  /endeavoring sync status - Show profile status")
-	print("  /endeavoring sync purge - Clear all synced profiles")
+	print("  /endeavoring sync stats - Show timing statistics")
 	print("  /endeavoring sync gossip - Show gossip statistics")
+	print("  /endeavoring sync purge - Clear all synced profiles")
 end
 
 --- Handle sync command routing
@@ -185,6 +211,8 @@ local function HandleSync(args)
 		HandleSyncBroadcast()
 	elseif args == "status" then
 		HandleSyncStatus()
+	elseif args == "stats" then
+		HandleSyncStats()
 	elseif args == "purge" then
 		HandleSyncPurge()
 	elseif args == "gossip" then

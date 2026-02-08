@@ -224,13 +224,25 @@ ns.API.RequestActivityLog()
 2. Integrate BattleTag mapping from sync profiles
 3. Create UI panel using same pattern (event-driven + loading spinner)
 
-### Phase 4: Testing & Polish 📅
+### Phase 4: Testing & Polish �
 
-**Status**: Test Plan Documented
+**Status**: In Progress (Active Testing)
+
+**Completed** (Feb 7, 2026):
+- [x] Multi-account testing (2 accounts, 9 characters)
+- [x] Message size limit handling (chunking implemented)
+- [x] Restricted zone messaging (lockdown detection)
+- [x] Backward compatibility validation
+- [x] Gossip protocol verification
+
+**In Progress**:
+- [ ] Large character list testing (15+ characters)
+- [ ] Instance lockdown detection testing
+- [ ] Edge case handling (offline sync, partial data)
+- [ ] Performance testing (large guilds, many characters)
 
 **Goals**:
-- [ ] Test with multiple accounts/characters
-- [ ] Add safeguards (data validation, size limits)
+- [ ] Comprehensive multi-account testing across various scenarios
 - [ ] Performance testing (large guilds, many characters)
 - [ ] Edge case handling (offline sync, partial data, etc.)
 - [ ] Debug commands for troubleshooting
@@ -266,7 +278,7 @@ Endeavoring/
 
 **Profile Discovery**: Gossip protocol provides eventual consistency, but there's no "catalog exchange" to discover profiles we've completely missed. A future enhancement could add periodic BattleTag list comparison to find gaps.
 
-**Message Chunking**: CBOR + compression handles up to ~20 character profiles comfortably within the 255-byte limit. Profiles with 50+ characters would still exceed the limit and need chunking. Most players won't hit this, so chunking is deferred as an optional enhancement (Phase 4).
+**Message Chunking**: ✅ Implemented (Feb 7, 2026). Testing revealed the 255-byte limit is hit around 9 characters (~260 bytes). Implemented automatic chunking at 5 characters per CHARS_UPDATE message. Chunking is transparent to receivers (leverages delta sync) and backward compatible.
 
 **In-Game Testing**: All code compiles successfully, but hasn't been tested in-game yet. Need multi-account testing to validate:
 - Compression is working correctly
@@ -419,11 +431,11 @@ Codebase is clean and well-organized:
 - Request specific missing profiles
 - Fills gaps that gossip alone can't handle
 
-**Message Chunking (Phase 4)**:
-- Handle profiles with 50+ characters
-- Split CHARS_UPDATE into numbered chunks
-- Reassemble with 30-second timeout
-- Only if real-world testing shows it's needed
+**Leaderboard UI Panel**:
+- Convert CLI leaderboard to visual panel
+- Use same async event-driven pattern
+- BattleTag/alias integration from synced profiles
+- Time range selector buttons
 
 ## Testing Status
 

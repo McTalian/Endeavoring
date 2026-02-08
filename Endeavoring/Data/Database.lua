@@ -229,6 +229,17 @@ function DB.GetAllProfiles()
 	return EndeavoringDB.global.profiles or {}
 end
 
+--- Get a specific profile by BattleTag (synced profiles only, excludes myProfile)
+--- @param battleTag string The BattleTag to look up
+--- @return Profile|nil profile The profile if found, nil otherwise
+function DB.GetProfile(battleTag)
+	if not battleTag then
+		return nil
+	end
+	
+	return EndeavoringDB.global.profiles[battleTag]
+end
+
 --- Get the player's profile for broadcasting (authoritative data)
 --- @return Profile|nil myProfile The player's profile to broadcast, or nil if not initialized
 function DB.GetMyProfileForBroadcast()
@@ -311,6 +322,30 @@ function DB.GetCharactersAddedAfter(afterTimestamp)
 	local myProfile = EndeavoringDB.global.myProfile
 	
 	for _, character in pairs(myProfile.characters) do
+		if character.addedAt and character.addedAt > afterTimestamp then
+			table.insert(result, {
+				name = character.name,
+				realm = character.realm,
+				addedAt = character.addedAt,
+			})
+		end
+	end
+	
+	return result
+end
+
+--- Get characters from any profile added after a specific timestamp
+--- @param battleTag string The BattleTag of the profile
+--- @param afterTimestamp number The timestamp to compare against
+--- @return Character[] Array of characters added after the timestamp
+function DB.GetProfileCharactersAddedAfter(battleTag, afterTimestamp)
+	local profile = DB.GetProfile(battleTag)
+	if not profile or not profile.characters then
+		return {}
+	end
+	
+	local result = {}
+	for _, character in pairs(profile.characters) do
 		if character.addedAt and character.addedAt > afterTimestamp then
 			table.insert(result, {
 				name = character.name,
