@@ -16,6 +16,42 @@ The primary goal of an agent working on the Endeavoring project is to collaborat
 - Assisting with testing and debugging efforts, by identifying potential issues, suggesting test cases, and helping to reproduce and resolve bugs.
 - Collaborating on documentation efforts, by reviewing and improving existing documentation, and suggesting new documentation where needed to enhance the usability and accessibility of the addon for users.
 
+## Agent & Model Selection
+
+Different AI models have different strengths. Choose the right tool for the task:
+
+### Use GPT-5.1-Codex-Max for:
+- **Complex multi-file refactoring** - Superior accuracy with large-scale code restructuring
+- **Multi-line code changes** - Better at preserving exact whitespace, indentation, and code structure
+- **Architectural restructuring** - More reliable when moving code between files or renaming across codebase
+- **Call site updates** - Stronger at finding and updating ALL references to renamed code
+
+**How to use**: 
+- For refactoring tasks, use the `/refactor` prompt which automatically delegates to GPT-5.1-Codex-Max
+- Or manually invoke via `runSubagent` with explicit instructions for GPT-5.1-Codex-Max
+
+### Use Claude Sonnet 4.5 (default) for:
+- **General development** - Feature implementation, bug fixes, documentation
+- **High-level planning** - Architecture discussions, design decisions, roadmapping
+- **Code review** - Analyzing code quality, suggesting improvements, identifying issues
+- **User communication** - Collaborative problem-solving, explaining concepts, asking questions
+- **Orchestration** - Coordinating complex workflows, validation, testing strategies
+
+**How to use**: Default agent - no special invocation needed
+
+### Refactoring Workflow
+
+**For complex refactoring** (multi-file, large-scale restructuring):
+1. Use `/refactor [description]` to invoke the refactoring workflow
+2. Claude Sonnet 4.5 will orchestrate: planning, git checkpoints, validation
+3. GPT-5.1-Codex-Max executes the actual code changes via subagent
+4. Claude Sonnet 4.5 validates each step and handles recovery if needed
+
+**For simple refactoring** (single file, small scope):
+- Claude Sonnet 4.5 can handle directly without delegation
+
+**Golden Rule**: If you find yourself struggling with multi-line replacements or worried about missing references across files, stop and use `/refactor` instead.
+
 ## Collaboration Guidelines
 
 When working on this project:

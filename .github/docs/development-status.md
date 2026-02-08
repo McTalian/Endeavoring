@@ -540,6 +540,62 @@ Codebase is clean and well-organized:
 - ~~LibSerialize~~ - Using `C_EncodingUtil.SerializeCBOR`
 - ~~LibDeflate~~ - Using `C_EncodingUtil.CompressString`
 
+## Development Workflows
+
+The project includes custom prompt files to streamline complex development tasks. These leverage different AI models for their strengths.
+
+### Available Prompts
+
+**`/refactor [description]`** - Complex code refactoring
+- **Use for**: Multi-file refactoring, architectural restructuring, large-scale renaming
+- **How it works**: Claude Sonnet 4.5 orchestrates planning and validation, delegates actual code changes to GPT-5.1-Codex-Max subagent
+- **Why**: GPT-5.1-Codex-Max excels at preserving exact whitespace, updating all call sites, and handling complex multi-line replacements
+- **Process**: Git checkpoint → Plan → Execute (via subagent) → Validate each step → Recovery if needed
+- **Example**: `/refactor Extract Protocol module from Sync.lua`
+
+**`/plan [feature]`** - Feature planning session
+- **Use for**: Designing new features, architectural decisions, scoping complex work
+- **How it works**: Collaborative planning with technical analysis, dependency identification, and implementation roadmap
+- **Example**: `/plan Leaderboard UI panel`
+
+**`/park`** - Save session progress
+- **Use for**: Ending a development session and handing off context
+- **How it works**: Updates documentation with session accomplishments, generates comprehensive handoff summary
+- **Output**: Copy/paste-ready handoff for `/resume` in next session
+
+**`/resume [handoff]`** - Restore context from parked session
+- **Use for**: Starting work after a `/park` handoff
+- **How it works**: Parses handoff, validates current state, confirms next steps, proceeds with work
+- **Example**: `/resume [paste handoff summary here]`
+
+**`/review [scope]`** - Code review
+- **Use for**: Getting feedback on code quality, identifying issues, suggesting improvements
+- **How it works**: WoW addon development best practices, Lua patterns, architectural review
+
+### Model Selection Guidelines
+
+Different AI models excel at different tasks:
+
+**GPT-5.1-Codex-Max**:
+- Multi-file refactoring (superior accuracy)
+- Complex code restructuring
+- Precise multi-line replacements
+- Finding and updating ALL references
+
+**Claude Sonnet 4.5** (default):
+- General development and feature implementation
+- High-level planning and architecture
+- Code review and analysis
+- User communication and collaboration
+- Workflow orchestration
+
+**When refactoring**:
+- Simple (single file, small scope): Claude can handle directly
+- Complex (multi-file, large scale): Use `/refactor` to leverage GPT-5.1-Codex-Max
+- **Golden Rule**: If struggling with multi-line replacements or worried about missed references, use `/refactor`
+
+See [copilot-instructions.md](../.github/copilot-instructions.md#agent--model-selection) for full guidelines.
+
 ## Performance Metrics
 
 *To be measured in Phase 4*
