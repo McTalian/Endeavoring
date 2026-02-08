@@ -57,11 +57,13 @@ local function UpdateSortHeader()
 
 	local nameSuffix = ""
 	local pointsSuffix = ""
+	local asc = CreateAtlasMarkup("editmode-up-arrow", 16, 11, 1, 4)
+	local desc = CreateAtlasMarkup("editmode-down-arrow", 16, 11, 1, -4)
 	local state = ns.state or {}
 	if state.tasksSortKey == ns.Constants.TASKS_SORT_NAME then
-		nameSuffix = state.tasksSortAsc and " ^" or " v"
+		nameSuffix = state.tasksSortAsc and asc or desc
 	elseif state.tasksSortKey == ns.Constants.TASKS_SORT_POINTS then
-		pointsSuffix = state.tasksSortAsc and " ^" or " v"
+		pointsSuffix = state.tasksSortAsc and asc or desc
 	end
 
 	ns.ui.tasksUI.nameHeader:SetText("Task" .. nameSuffix)
