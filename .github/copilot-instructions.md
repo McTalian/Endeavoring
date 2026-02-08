@@ -95,6 +95,9 @@ This project leverages `wow-build-tools` for packaging the addon. It comes with 
 
 **IMPORTANT NOTE** While I refer to this feature as "Endeavors" (the name that is seen in-game), all of the API documentation and code references use the term "Initiatives," so keep that in mind when referencing the `wow-ui-source` repository. Endeavor is used a few times in the code base as well, but I find a lot of the "entry points" in the code seem to be using the term "Initiative."
 
+**WoW API Reference**: When wow-ui-source workspace is unavailable locally, reference:
+https://github.com/Gethe/wow-ui-source/tree/live/Interface/AddOns
+
 ## File Path Convention
 
 Always use forward slashes (`/`) for file paths regardless of OS. The WoW client correctly interprets them on all platforms.
@@ -102,7 +105,7 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 ## Development Status
 
 **Current Phase**: Phase 4 (In-Game Testing - Ongoing)  
-**Recent Work**: Guard clause cleanup (removed 4 unnecessary guards), enhanced documentation (TOC loading behavior, validation commands, maintenance guidelines), in-game validation passed
+**Recent Work**: Leaderboard UI complete with BattleTag aggregation, time filters, and proper event debouncing; alignment fixes for scrollbar offset; CharacterCache selective invalidation; comprehensive TODO documentation for future enhancements
 
 See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 

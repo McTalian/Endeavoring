@@ -85,6 +85,11 @@ local function SetSort(sortKey)
 end
 
 local function CreateTaskRow(parent, index)
+	-- TODO: Richer task rows - increase height, add task description, show rewards footer (coupons + House XP)
+	-- TODO: Add contribution points icon (housing-dashboard-tasks-listitem-flag at ~16x16)
+	-- TODO: Add row separators for better visual parsing
+	-- TODO: Make House XP sortable (currently in footer AND header)
+	
 	local constants = ns.Constants
 	local row = CreateFrame("Button", nil, parent)
 	row:SetHeight(constants.TASK_ROW_HEIGHT)
@@ -205,7 +210,7 @@ end
 function Tasks.CreateTab(parent)
 	local constants = ns.Constants
 	local content = CreateFrame("Frame", nil, parent)
-	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -120)
+	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -152)
 	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
 
 	local header = CreateFrame("Frame", nil, content)
@@ -224,8 +229,11 @@ function Tasks.CreateTab(parent)
 	nameHeader.text:SetJustifyH("LEFT")
 	nameHeader.text:SetText("Task")
 
+	-- Account for scrollbar width from UIPanelScrollFrameTemplate
+	local scrollbarOffset = constants.SCROLLBAR_WIDTH
+
 	local pointsHeader = CreateFrame("Button", nil, header)
-	pointsHeader:SetPoint("RIGHT", header, "RIGHT", -constants.TASK_XP_WIDTH - 12, 0)
+	pointsHeader:SetPoint("RIGHT", header, "RIGHT", -constants.TASK_XP_WIDTH - 12 - scrollbarOffset, 0)
 	pointsHeader:SetSize(constants.TASK_POINTS_WIDTH, 18)
 	pointsHeader:SetScript("OnClick", function()
 		SetSort(constants.TASKS_SORT_POINTS)
@@ -236,7 +244,7 @@ function Tasks.CreateTab(parent)
 	pointsHeader.text:SetText("Points")
 
 	local xpHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	xpHeader:SetPoint("RIGHT", header, "RIGHT", -6, 0)
+	xpHeader:SetPoint("RIGHT", header, "RIGHT", -6 - scrollbarOffset, 0)
 	xpHeader:SetWidth(constants.TASK_XP_WIDTH)
 	xpHeader:SetJustifyH("RIGHT")
 	xpHeader:SetText("House XP")

@@ -154,12 +154,14 @@ local function DisplayLeaderboard(timeRange)
 		end
 		
 		local marker = entry.isLocalPlayer and " (You)" or ""
-		print(string.format("  %d. %s: %d points (%d tasks)%s", 
-			rank, 
-			entry.displayName, 
-			entry.total, 
+		print(string.format("  %d. %s%s: %d points (%d tasks%s)", 
+			rank,
+			entry.displayName,
+			marker,
+			entry.total,
 			entry.entries,
-			marker))
+			(#entry.charNames > 0) and (" with " .. #entry.charNames .. " characters") or ""
+		))
 	end
 	
 	if #leaderboard > maxDisplay then
@@ -186,8 +188,10 @@ local function HandleLeaderboard(args)
 	local frame = CreateFrame("Frame")
 	frame:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
 	frame:SetScript("OnEvent", function(self, event)
-		self:UnregisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
-		DisplayLeaderboard(timeRange)
+		if event == "INITIATIVE_ACTIVITY_LOG_UPDATED" then
+			frame:UnregisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
+			DisplayLeaderboard(timeRange)
+		end
 	end)
 	
 	-- Request activity log data

@@ -206,40 +206,48 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 - Message chunking for 50+ character profiles (still exceeds limit after compression)
 - Conditional compression (would save ~10-20 bytes on tiny messages, not worth complexity)
 
-### Phase 3.8: Leaderboard POC 📊
+### Phase 3.8: Leaderboard UI 📊
 
-**Status**: Code Complete (Untested)
+**Status**: Complete ✅
 
-**Summary**: CLI-based contribution leaderboard aggregates activity log by player.
+**Summary**: Full-featured leaderboard UI with BattleTag aggregation, time filters, and proper event handling.
 
-**Implementation**:
-- **Features/Leaderboard.lua** (114 lines)
-  - `BuildFromActivityLog()` - Aggregates tasks by player name
-  - `BuildEnriched()` - Adds BattleTag/alias mapping (stub for now)
-  - Time range filtering: All Time, Today (24h), This Week (7d)
-  - Sorting by total contribution (desc) with alphabetical tie-breaker
-- **Commands.lua** - Added `/endeavoring leaderboard [all|today|week]` (alias: `/endeavoring lb`)
-- **NeighborhoodAPI.lua** - Added `GetActivityLogInfo()` and `RequestActivityLog()` wrappers
+**Completed Features**:
+- **BattleTag Aggregation** (`BuildEnriched()`) - Groups all alts under player's alias/BattleTag
+  - Uses CharacterCache for O(1) character→BattleTag lookups
+  - Falls back to character name for players not in sync network
+  - Aggregates contribution totals and entry counts
+  - Adds `charNames` array for future tooltip use
+- **Complete UI Panel** (`CreateTab()`)
+  - Time range filter buttons (All Time, This Week, Today)
+  - Sortable by total contribution (descending)
+  - Scrollable leaderboard with rank, player name, total, and entry count
+  - Local player highlighting (bright green)
+  - Header alignment with scrollbar offset (SCROLLBAR_WIDTH constant)
+- **Proper Event Handling**
+  - Registers `INITIATIVE_ACTIVITY_LOG_UPDATED` event once during tab creation
+  - True debounce implementation with timer cancellation (prevents triple-fire)
+  - Separates data fetching (`Refresh()`) from display update (`UpdateLeaderboardDisplay()`)
+- **CharacterCache Enhancements**
+  - Selective invalidation by BattleTag (more efficient than full rebuild)
+  - Handles full, selective, and fresh cache states
+  - Includes MyProfile in lookups for local player aggregation
 
-**Key Pattern**: Async event-driven data fetching
-```lua
--- Register one-shot event handler
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
-frame:SetScript("OnEvent", function(self, event)
-  self:UnregisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
-  DisplayLeaderboard(timeRange)
-end)
--- Request data
-ns.API.RequestActivityLog()
-```
+**UI Layout**:
+- Time filter buttons at top
+- Header row with column labels (Rank, Player, Total, Entries)
+- Scrollable content area with proper alignment
+- Empty state handling
 
-**Testing Status**: ❌ Not tested in-game (requires active Endeavor)
+**Testing Status**: ✅ Validated in-game with 10 players, multiple alts
 
-**Next Steps**:
-1. Test CLI leaderboard with real activity data
-2. Integrate BattleTag mapping from sync profiles
-3. Create UI panel using same pattern (event-driven + loading spinner)
+**Future Enhancements** (documented as TODOs):
+- Addon indicator icon for synced players
+- Tooltips showing which characters contributed
+- Column sorting (click headers to sort)
+- Task row improvements (richer display, icons, row separators)
+- Tab styling polish and repositioning (deferred to /refactor workflow)
+- Header enhancements (colored progress bar, milestone markers, tooltip for endeavor description)
 
 ### Phase 4: Testing & Polish + Code Quality 🔬
 

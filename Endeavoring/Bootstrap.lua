@@ -5,7 +5,8 @@ local ns = select(2, ...)
 
 ns.Constants = ns.Constants or {
 	FRAME_WIDTH = 620,
-	FRAME_HEIGHT = 440,
+	FRAME_HEIGHT = 480,
+	TAB_HEIGHT = 32,
 	TAB_LABELS = {
 		"Tasks",
 		"Activity",
@@ -14,9 +15,14 @@ ns.Constants = ns.Constants or {
 	TASK_ROW_HEIGHT = 24,
 	TASK_POINTS_WIDTH = 80,
 	TASK_XP_WIDTH = 70,
+	LEADERBOARD_ROW_HEIGHT = 24,
+	LEADERBOARD_TOTAL_WIDTH = 80,
+	LEADERBOARD_ENTRIES_WIDTH = 70,
+	SCROLLBAR_WIDTH = 20,
 	NO_ACTIVE_ENDEAVOR = "No active endeavor",
 	TIME_REMAINING_FALLBACK = "Time Remaining: --",
 	NO_TASKS_AVAILABLE = "No tasks available",
+	NO_LEADERBOARD_DATA = "No activity recorded",
 	TASKS_SORT_NAME = "name",
 	TASKS_SORT_POINTS = "points",
 	-- Message prefixes

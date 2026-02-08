@@ -236,6 +236,10 @@ function DB.GetProfile(battleTag)
 	if not battleTag then
 		return nil
 	end
+
+	if battleTag == DB.GetMyBattleTag() then
+		return EndeavoringDB.global.myProfile
+	end
 	
 	return EndeavoringDB.global.profiles[battleTag]
 end

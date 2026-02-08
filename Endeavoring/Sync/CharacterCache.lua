@@ -28,30 +28,73 @@ with per-profile timestamp tracking for selective invalidation at scale (50+ pro
 
 -- State
 local cache = {}
+---@type boolean|string[] isStale Whether the cache is stale and needs rebuilding, or an array of specific profile ids (battletags) that are stale
 local isStale = true
+
+local StaleType = {
+	FULL = "full",
+	SELECTIVE = "selective",
+	FRESH = "fresh",
+}
+
+local function CheckStaleness()
+	if isStale == true then
+		return StaleType.FULL
+	elseif type(isStale) == "table" and #isStale > 0 then
+		return StaleType.SELECTIVE
+	else
+		return StaleType.FRESH
+	end
+end
 
 --- Rebuild the character-to-BattleTag cache from all profiles
 --- Called automatically when cache is stale
 local function Rebuild()
-	cache = {}
-	local allProfiles = ns.DB.GetAllProfiles()
-	
-	for battleTag, profile in pairs(allProfiles) do
-		if profile.characters then
-			for _, char in pairs(profile.characters) do
-				cache[char.name] = battleTag
+	local staleness = CheckStaleness()
+	if staleness == StaleType.FRESH then
+		return
+	elseif staleness == StaleType.FULL then
+		-- Full rebuild
+		cache = {}
+
+		local allProfiles = ns.DB.GetAllProfiles()
+		
+		for battleTag, profile in pairs(allProfiles) do
+			if profile.characters then
+				for _, char in pairs(profile.characters) do
+					cache[char.name] = battleTag
+				end
 			end
 		end
-	end
 	
-	isStale = false
+		local myProfile = ns.DB.GetMyProfile()
+		if myProfile and myProfile.characters then
+			for _, char in pairs(myProfile.characters) do
+				cache[char.name] = myProfile.battleTag
+			end
+		end
+
+		isStale = false
+	elseif staleness == StaleType.SELECTIVE then
+		-- Selective rebuild for specific profiles
+		for _, battleTag in pairs(isStale) do
+			local profile = ns.DB.GetProfile(battleTag)
+			if profile and profile.characters then
+				for _, char in pairs(profile.characters) do
+					cache[char.name] = battleTag
+				end
+			end
+		end
+
+		isStale = false
+	end
 end
 
 --- Look up a player's BattleTag by character name
 --- @param characterName string The character name to search for
 --- @return string|nil battleTag The BattleTag if found, nil otherwise
 function CharacterCache.FindBattleTag(characterName)
-	if isStale then
+	if CheckStaleness() ~= StaleType.FRESH then
 		Rebuild()
 	end
 	
@@ -60,8 +103,27 @@ end
 
 --- Mark cache as stale (call when profile data changes)
 --- Cache will be rebuilt on next lookup
-function CharacterCache.Invalidate()
-	isStale = true
+--- @param battletag string|nil Optional specific BattleTag to invalidate, or nil to invalidate entire cache
+function CharacterCache.Invalidate(battletag)
+	if not battletag then
+		-- Invalidate entire cache
+		isStale = true
+		return
+	end
+	local staleness = CheckStaleness()
+	if staleness == StaleType.FULL then
+		-- Already fully stale, no action needed
+		return
+	elseif staleness == StaleType.SELECTIVE then
+		-- Already in selective mode, add to list if not present
+		if not tContains(isStale, battletag) then
+			table.insert(isStale, battletag)
+		end
+	elseif staleness == StaleType.FRESH then
+		-- Switch to selective stale mode with this battletag
+		isStale = {}
+		table.insert(isStale, battletag)
+	end
 end
 
 --- Get cache statistics for debugging

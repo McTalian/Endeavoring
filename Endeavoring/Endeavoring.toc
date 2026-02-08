@@ -28,6 +28,7 @@ Features/Header.lua
 Features/Tasks.lua
 Features/Leaderboard.lua
 Integrations/HousingDashboard.lua
+Integrations/HousingDashboardHouseInfo.lua
 Commands.lua
 Core.lua
 #locale/locales.xml

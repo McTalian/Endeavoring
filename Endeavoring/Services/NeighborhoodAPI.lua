@@ -6,6 +6,8 @@ local ns = select(2, ...)
 local API = {}
 ns.API = API
 
+local DebugPrint = ns.DebugPrint
+
 function API.GetInitiativeInfo()
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo then
 		return C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo()
@@ -14,7 +16,17 @@ function API.GetInitiativeInfo()
 	return nil
 end
 
+local RequestInitiativeInfoThrottled = false
+
 function API.RequestInitiativeInfo()
+	if RequestInitiativeInfoThrottled then
+		DebugPrint("RequestInitiativeInfo is currently throttled, skipping request to prevent spamming")
+		return
+	end
+	RequestInitiativeInfoThrottled = true
+	C_Timer.After(10, function()
+		RequestInitiativeInfoThrottled = false
+	end)
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo then
 		C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo()
 	end
@@ -60,8 +72,19 @@ function API.GetActivityLogInfo()
 	return nil
 end
 
+local RequestActivityLogThrottled = false
+
 function API.RequestActivityLog()
+	if RequestActivityLogThrottled then
+		DebugPrint("RequestActivityLog is currently throttled, skipping request to prevent spamming")
+		return
+	end
+	RequestActivityLogThrottled = true
+	C_Timer.After(10, function()
+		RequestActivityLogThrottled = false
+	end)
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestInitiativeActivityLog then
 		C_NeighborhoodInitiative.RequestInitiativeActivityLog()
+		ns.Integrations.HousingDashboardHouseContent.TryForceActivityLoad()
 	end
 end

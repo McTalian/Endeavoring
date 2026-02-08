@@ -9,7 +9,7 @@ local DebugPrint = ns.DebugPrint
 
 local function CreateTabContent(parent, label)
 	local content = CreateFrame("Frame", nil, parent)
-	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -120)
+	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -152)
 	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
 
 	local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -34,20 +34,22 @@ local function SetActiveTab(parent, tabIndex)
 end
 
 local function CreateTabs(parent)
+	-- TODO: Polish tab styling (better visual separation, active state highlighting)
+	
 	parent.tabs = {}
 	parent.tabContents = {}
 
 	for index, label in ipairs(constants.TAB_LABELS) do
 		local tab = CreateFrame("Button", nil, parent, "TabSystemTopButtonTemplate")
 		tab:SetText(label)
-		tab:SetSize(110, 22)
+		tab:SetSize(110, constants.TAB_HEIGHT)
 		tab:SetID(index)
 		tab:SetScript("OnClick", function(self)
 			SetActiveTab(parent, self:GetID())
 		end)
 
 		if index == 1 then
-			tab:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 8, 6)
+			tab:SetPoint("BOTTOMLEFT", parent.header, "BOTTOMLEFT", -4, -2)
 		else
 			tab:SetPoint("LEFT", parent.tabs[index - 1], "RIGHT", 6, 0)
 		end
@@ -55,6 +57,8 @@ local function CreateTabs(parent)
 		parent.tabs[index] = tab
 		if label == "Tasks" then
 			parent.tabContents[index] = ns.Tasks.CreateTab(parent)
+		elseif label == "Leaderboard" then
+			parent.tabContents[index] = ns.Leaderboard.CreateTab(parent)
 		else
 			parent.tabContents[index] = CreateTabContent(parent, label)
 		end
@@ -66,6 +70,7 @@ end
 local function RefreshInitiativeUI()
 	ns.Header.Refresh()
 	ns.Tasks.Refresh()
+	ns.Leaderboard.Refresh()
 end
 
 local function CreateMainFrame()
@@ -77,6 +82,7 @@ local function CreateMainFrame()
 	frame:RegisterForDrag("LeftButton")
 	frame:SetScript("OnDragStart", frame.StartMoving)
 	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+	frame:SetFrameStrata("DIALOG")
 	frame:SetClampedToScreen(true)
 
 	frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -113,7 +119,6 @@ ns.RefreshInitiativeUI = RefreshInitiativeUI
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ADDON_LOADED")
-eventFrame:RegisterEvent("NEIGHBORHOOD_INITIATIVE_UPDATED")
 eventFrame:RegisterEvent("INITIATIVE_COMPLETED")
 eventFrame:RegisterEvent("INITIATIVE_TASK_COMPLETED")
 eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
@@ -154,7 +159,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		return
 	end
 
-	if event == "NEIGHBORHOOD_INITIATIVE_UPDATED" or event == "INITIATIVE_COMPLETED" or event == "INITIATIVE_TASK_COMPLETED" then
+	if event == "INITIATIVE_COMPLETED" or event == "INITIATIVE_TASK_COMPLETED" then
 		RefreshInitiativeUI()
 	end
 	

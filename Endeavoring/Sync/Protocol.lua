@@ -335,7 +335,7 @@ local function HandleCharsUpdate(sender, data)
 		if success then
 			DebugPrint(string.format("Updated %d character(s) for %s", #validChars, battleTag))
 			-- Invalidate cache since we added characters
-			ns.CharacterCache.Invalidate()
+			ns.CharacterCache.Invalidate(battleTag)
 		end
 	end
 end

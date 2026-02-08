@@ -7,11 +7,15 @@ local Header = {}
 ns.Header = Header
 
 function Header.Create(parent)
+	-- TODO: Add color gradient to progress bar (similar to experience bar)
+	-- TODO: Display milestone markers at progress bar positions (checkmarks when completed)
+	-- TODO: Add tooltip/description icon for endeavor flavor text
+	
 	local constants = ns.Constants
 	local header = CreateFrame("Frame", nil, parent)
 	header:SetPoint("TOPLEFT", 12, -32)
 	header:SetPoint("TOPRIGHT", -12, -32)
-	header:SetHeight(60)
+	header:SetHeight(88)
 
 	header.title = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	header.title:SetPoint("TOPLEFT", 6, -4)

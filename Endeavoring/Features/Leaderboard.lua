@@ -6,6 +6,8 @@ local ns = select(2, ...)
 local Leaderboard = {}
 ns.Leaderboard = Leaderboard
 
+local DebugPrint = ns.DebugPrint
+
 -- Time range constants (in seconds)
 local TIME_RANGE = {
 	ALL_TIME = 0,
@@ -62,8 +64,12 @@ function Leaderboard.BuildFromActivityLog(activityLog, timeRange)
 	-- Sort by total contribution (descending)
 	table.sort(leaderboard, function(a, b)
 		if a.total == b.total then
-			-- Tie-breaker: alphabetical by player name
-			return a.player < b.player
+			if a.entries == b.entries then
+				-- Tie-breaker: alphabetical by player name
+				return a.player < b.player
+			end
+			-- Tie-breaker: more entries ranks higher
+			return a.entries > b.entries
 		end
 		return a.total > b.total
 	end)
@@ -77,15 +83,56 @@ end
 --- @return table leaderboard Sorted array with alias field added
 function Leaderboard.BuildEnriched(activityLog, timeRange)
 	local leaderboard = Leaderboard.BuildFromActivityLog(activityLog, timeRange)
-	
-	-- TODO: Map player names to BattleTag/Alias using ns.DB profiles
-	-- For now, just use player name as-is
+
+	local myBattleTag = ns.PlayerInfo.GetBattleTag()
+
+	local battleTagLeaderboard = {}
+	local enrichedLeaderboard = {}
 	for _, entry in ipairs(leaderboard) do
-		entry.displayName = entry.player
-		entry.isLocalPlayer = (entry.player == UnitName("player"))
+		local battleTag = ns.CharacterCache.FindBattleTag(entry.player)
+		if battleTag then
+			local profile = ns.DB.GetProfile(battleTag)
+			local displayName = profile and profile.alias or battleTag
+			battleTagLeaderboard[battleTag] = battleTagLeaderboard[battleTag] or {
+				displayName = displayName,
+				total = 0,
+				entries = 0,
+				charNames = {},
+				isLocalPlayer = (battleTag == myBattleTag),
+			}
+			battleTagLeaderboard[battleTag].total = battleTagLeaderboard[battleTag].total + entry.total
+			battleTagLeaderboard[battleTag].entries = battleTagLeaderboard[battleTag].entries + entry.entries
+			table.insert(battleTagLeaderboard[battleTag].charNames, entry.player)
+		else
+			table.insert(enrichedLeaderboard, {
+				displayName = entry.player,
+				total = entry.total,
+				entries = entry.entries,
+				charNames = {},
+				isLocalPlayer = (entry.player == UnitName("player")),
+			})
+		end
 	end
 
-	return leaderboard
+	-- Add BattleTag entries to enriched leaderboard
+	for _, data in pairs(battleTagLeaderboard) do
+		table.insert(enrichedLeaderboard, data)
+	end
+
+	-- Sort enriched leaderboard by total contribution (descending)
+	table.sort(enrichedLeaderboard, function(a, b)
+		if a.total == b.total then
+			if a.entries == b.entries then
+				-- Tie-breaker: alphabetical by display name
+				return a.displayName < b.displayName
+			end
+			-- Tie-breaker: more entries ranks higher
+			return a.entries > b.entries
+		end
+		return a.total > b.total
+	end)
+
+	return enrichedLeaderboard
 end
 
 --- Set the current time range filter
@@ -111,6 +158,276 @@ function Leaderboard.GetTimeRangeName(range)
 	else
 		return "All Time"
 	end
+end
+
+--- Create a single leaderboard row
+--- @param parent Frame The parent frame (scrollChild)
+--- @param index number The row index
+--- @return Frame row The created row
+local function CreateLeaderboardRow(parent, index)
+	-- TODO: Add indicator icon for players using Endeavoring addon (show synced profiles)
+	-- TODO: Add tooltip showing which characters contributed (from entry.charNames)
+	-- TODO: Make rows sortable by clicking headers (Rank, Player, Total, Entries)
+	
+	local constants = ns.Constants
+	local row = CreateFrame("Frame", nil, parent)
+	row:SetHeight(constants.LEADERBOARD_ROW_HEIGHT)
+	row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * constants.LEADERBOARD_ROW_HEIGHT))
+	row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * constants.LEADERBOARD_ROW_HEIGHT))
+
+	-- Rank number
+	row.rank = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.rank:SetPoint("LEFT", 6, 0)
+	row.rank:SetWidth(30)
+	row.rank:SetJustifyH("LEFT")
+
+	-- Display name
+	row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.name:SetPoint("LEFT", row.rank, "RIGHT", 8, 0)
+	row.name:SetJustifyH("LEFT")
+
+	-- Total contribution
+	row.total = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.total:SetWidth(constants.LEADERBOARD_TOTAL_WIDTH)
+	row.total:SetJustifyH("RIGHT")
+	row.total:SetPoint("RIGHT", row, "RIGHT", -constants.LEADERBOARD_ENTRIES_WIDTH - 12, 0)
+
+	-- Number of entries
+	row.entries = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.entries:SetWidth(constants.LEADERBOARD_ENTRIES_WIDTH)
+	row.entries:SetJustifyH("RIGHT")
+	row.entries:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+
+	-- Connect name width
+	row.name:SetPoint("RIGHT", row.total, "LEFT", -8, 0)
+
+	return row
+end
+
+--- Update the time range filter button highlights
+local function UpdateFilterButtons()
+	if not ns.ui.leaderboardUI then
+		return
+	end
+
+	local leaderboardUI = ns.ui.leaderboardUI
+	local currentRange = state.timeRange
+
+	for range, button in pairs(leaderboardUI.filterButtons) do
+		if range == currentRange then
+			button:Disable()
+			button:SetAlpha(1.0)
+		else
+			button:Enable()
+			button:SetAlpha(0.7)
+		end
+	end
+end
+
+--- Set the time range filter and refresh
+--- @param range number One of TIME_RANGE constants
+local function SetTimeRangeFilter(range)
+	Leaderboard.SetTimeRange(range)
+	UpdateFilterButtons()
+	Leaderboard.Refresh()
+end
+
+--- Internal function to update leaderboard display with current data
+local function UpdateLeaderboardDisplay()
+	if not ns.ui.leaderboardUI then
+		return
+	end
+
+	local leaderboardUI = ns.ui.leaderboardUI
+	local constants = ns.Constants
+	local activityLog = ns.API.GetActivityLogInfo()
+
+	if not activityLog or not activityLog.taskActivity or #activityLog.taskActivity == 0 then
+		leaderboardUI.emptyText:SetText(constants.NO_LEADERBOARD_DATA)
+		leaderboardUI.emptyText:Show()
+		for _, row in ipairs(leaderboardUI.rows) do
+			row:Hide()
+		end
+		return
+	end
+
+	local leaderboard = Leaderboard.BuildEnriched(activityLog, state.timeRange)
+	if #leaderboard == 0 then
+		leaderboardUI.emptyText:SetText(constants.NO_LEADERBOARD_DATA)
+		leaderboardUI.emptyText:Show()
+		for _, row in ipairs(leaderboardUI.rows) do
+			row:Hide()
+		end
+		return
+	end
+
+	leaderboardUI.emptyText:Hide()
+	local totalHeight = #leaderboard * constants.LEADERBOARD_ROW_HEIGHT
+	leaderboardUI.scrollChild:SetHeight(totalHeight)
+	local scrollWidth = leaderboardUI.scrollFrame and leaderboardUI.scrollFrame:GetWidth() or 1
+	if scrollWidth and scrollWidth > 0 then
+		leaderboardUI.scrollChild:SetWidth(scrollWidth)
+	end
+
+	for index, entry in ipairs(leaderboard) do
+		local row = leaderboardUI.rows[index]
+		if not row then
+			row = CreateLeaderboardRow(leaderboardUI.scrollChild, index)
+			leaderboardUI.rows[index] = row
+		end
+
+		row.data = entry
+		row.rank:SetText(tostring(index))
+		row.name:SetText(entry.displayName or "Unknown")
+		row.total:SetText(string.format("%.3f", entry.total or 0))
+		row.entries:SetText(tostring(entry.entries or 0))
+
+		-- Highlight local player
+		if entry.isLocalPlayer then
+			row.rank:SetTextColor(0.1, 1.0, 0.1)
+			row.name:SetTextColor(0.1, 1.0, 0.1)
+			row.total:SetTextColor(0.1, 1.0, 0.1)
+			row.entries:SetTextColor(0.1, 1.0, 0.1)
+		else
+			row.rank:SetTextColor(1, 0.82, 0)
+			row.name:SetTextColor(1, 1, 1)
+			row.total:SetTextColor(1, 1, 1)
+			row.entries:SetTextColor(1, 1, 1)
+		end
+
+		row:Show()
+	end
+
+	-- Hide unused rows
+	for index = #leaderboard + 1, #leaderboardUI.rows do
+		leaderboardUI.rows[index]:Hide()
+	end
+end
+
+--- Refresh the leaderboard UI (requests fresh data)
+function Leaderboard.Refresh()
+	ns.API.RequestActivityLog()
+	-- Event handler will update display when data arrives
+end
+
+--- Create the leaderboard tab UI
+--- @param parent Frame The parent frame
+--- @return Frame content The leaderboard tab content
+function Leaderboard.CreateTab(parent)
+	local constants = ns.Constants
+	local content = CreateFrame("Frame", nil, parent)
+	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -152)
+	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
+
+	-- Time range filter buttons
+	local filterContainer = CreateFrame("Frame", nil, content)
+	filterContainer:SetPoint("TOPLEFT", 4, -4)
+	filterContainer:SetPoint("TOPRIGHT", -4, -4)
+	filterContainer:SetHeight(30)
+
+	local filterButtons = {}
+	local filterOrder = {TIME_RANGE.ALL_TIME, TIME_RANGE.THIS_WEEK, TIME_RANGE.TODAY}
+	for i, range in ipairs(filterOrder) do
+		local button = CreateFrame("Button", nil, filterContainer, "UIPanelButtonTemplate")
+		button:SetSize(90, 22)
+		button:SetText(Leaderboard.GetTimeRangeName(range))
+		button:SetScript("OnClick", function()
+			SetTimeRangeFilter(range)
+		end)
+
+		if i == 1 then
+			button:SetPoint("LEFT", 4, 0)
+		else
+			button:SetPoint("LEFT", filterButtons[filterOrder[i-1]], "RIGHT", 4, 0)
+		end
+
+		filterButtons[range] = button
+	end
+
+	-- Header row
+	local header = CreateFrame("Frame", nil, content)
+	header:SetPoint("TOPLEFT", filterContainer, "BOTTOMLEFT", 0, -8)
+	header:SetPoint("TOPRIGHT", filterContainer, "BOTTOMRIGHT", 0, -8)
+	header:SetHeight(22)
+
+	local rankHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	rankHeader:SetPoint("LEFT", 6, 0)
+	rankHeader:SetWidth(30)
+	rankHeader:SetJustifyH("LEFT")
+	rankHeader:SetText("Rank")
+
+	local nameHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	nameHeader:SetPoint("LEFT", rankHeader, "RIGHT", 8, 0)
+	nameHeader:SetJustifyH("LEFT")
+	nameHeader:SetText("Player")
+
+	-- Account for scrollbar width from UIPanelScrollFrameTemplate
+	local scrollbarOffset = constants.SCROLLBAR_WIDTH
+	
+	local totalHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	totalHeader:SetPoint("RIGHT", header, "RIGHT", -constants.LEADERBOARD_ENTRIES_WIDTH - 12 - scrollbarOffset, 0)
+	totalHeader:SetWidth(constants.LEADERBOARD_TOTAL_WIDTH)
+	totalHeader:SetJustifyH("RIGHT")
+	totalHeader:SetText("Total")
+
+	local entriesHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	entriesHeader:SetPoint("RIGHT", header, "RIGHT", -6 - scrollbarOffset, 0)
+	entriesHeader:SetWidth(constants.LEADERBOARD_ENTRIES_WIDTH)
+	entriesHeader:SetJustifyH("RIGHT")
+	entriesHeader:SetText("Entries")
+
+	-- Scroll frame
+	local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
+	scrollFrame:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -6)
+	scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -24, 0)
+
+	local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+	scrollChild:SetPoint("TOPLEFT")
+	scrollChild:SetPoint("TOPRIGHT")
+	scrollChild:SetHeight(1)
+	scrollChild:SetWidth(1)
+	scrollFrame:SetScrollChild(scrollChild)
+	scrollFrame:HookScript("OnSizeChanged", function(_, width)
+		scrollChild:SetWidth(width)
+	end)
+
+	-- Empty state text
+	local emptyText = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	emptyText:SetPoint("CENTER", scrollFrame, "CENTER")
+	emptyText:SetText(constants.NO_LEADERBOARD_DATA)
+	emptyText:Hide()
+
+	-- Register event handler for activity log updates
+	local pendingUpdateTimer
+	content:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
+	content:SetScript("OnEvent", function(self, event)
+		if event == "INITIATIVE_ACTIVITY_LOG_UPDATED" then
+			-- Cancel pending update if one exists
+			if pendingUpdateTimer then
+				pendingUpdateTimer:Cancel()
+			end
+			-- Schedule new update (will be cancelled if another event fires)
+			pendingUpdateTimer = C_Timer.NewTimer(0.1, function()
+				DebugPrint("Debounce timer fired, updating leaderboard display")
+				UpdateLeaderboardDisplay()
+				pendingUpdateTimer = nil
+			end)
+		end
+	end)
+
+	-- Store references
+	content.filterButtons = filterButtons
+	content.header = header
+	content.scrollFrame = scrollFrame
+	content.scrollChild = scrollChild
+	content.emptyText = emptyText
+	content.rows = {}
+
+	ns.ui.leaderboardUI = content
+	UpdateFilterButtons()
+
+	content:Hide()
+	return content
 end
 
 -- Export constants
