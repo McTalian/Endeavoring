@@ -138,17 +138,17 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		end
 		
 		ns.Commands.Register()
-		local integration = ns.Integrations and ns.Integrations.HousingDashboard
-		if integration and integration.EnsureLoaded and integration.EnsureLoaded() then
+		local integration = ns.Integrations.HousingDashboard
+		if integration.EnsureLoaded() then
 			integration.RegisterButtonHook()
 		end
 		return
 	end
 
 	if event == "ADDON_LOADED" then
-		local integration = ns.Integrations and ns.Integrations.HousingDashboard
+		local integration = ns.Integrations.HousingDashboard
 		local addonNameLoaded = ...
-		if integration and addonNameLoaded == integration.GetAddonName() and integration.EnsureLoaded() then
+		if addonNameLoaded == integration.GetAddonName() and integration.EnsureLoaded() then
 			integration.RegisterButtonHook()
 		end
 		return

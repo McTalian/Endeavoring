@@ -51,7 +51,7 @@ local function BuildSortedTasks(initiativeInfo)
 end
 
 local function UpdateSortHeader()
-	if not ns.ui or not ns.ui.tasksUI then
+	if not ns.ui.tasksUI then
 		return
 	end
 
@@ -138,7 +138,7 @@ local function GetHouseXPText(rewardQuestID)
 end
 
 function Tasks.Refresh()
-	if not ns.ui or not ns.ui.tasksUI then
+	if not ns.ui.tasksUI then
 		return
 	end
 
