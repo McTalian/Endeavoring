@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 local constants = ns.Constants
@@ -125,8 +125,8 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		ns.DB.Init()
 		
 		-- Initialize sync service
-		ns.Sync.Init()
-		ns.Sync.RegisterListener()
+		ns.AddonMessages.Init()
+		ns.AddonMessages.RegisterListener()
 		
 		-- Register current character
 		local success = ns.DB.RegisterCurrentCharacter()

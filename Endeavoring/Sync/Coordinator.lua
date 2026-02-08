@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 local Coordinator = {}
@@ -8,6 +8,7 @@ ns.Coordinator = Coordinator
 
 -- Shortcuts
 local DebugPrint = ns.DebugPrint
+local ChatType = ns.AddonMessages.ChatType
 
 --[[
 Sync Coordinator - Orchestration & Timing
@@ -26,14 +27,18 @@ TIMING STRATEGY:
 - Random delays stagger manifests across guild members
 
 DEPENDENCIES:
-Coordinator depends on Services/Sync for actual message transmission
+Coordinator depends on Services/AddonMessages for message transmission
 and protocol details (BuildMessage, SendMessage). This maintains proper
-layering: Coordinator orchestrates, Sync handles low-level messaging.
+layering: Coordinator orchestrates, AddonMessages handles low-level WoW API.
 --]]
 
 -- Configuration
+local GUILD_ROSTER_DEBOUNCE_SECONDS = 8  -- Debounce time for roster updates
+local GUILD_ROSTER_STORM_RANDOM_DELAY_RANGE = {2, 20}  -- Random delay range (seconds) for roster-triggered manifests
 local GUILD_ROSTER_MIN_INTERVAL = 60  -- Min seconds between roster-triggered manifests
+local MANIFEST_DEBOUNCE_SECONDS = 2  -- Debounce time for manifest broadcasts (coalescing rapid events)
 local MANIFEST_HEARTBEAT_INTERVAL = 300  -- Send manifest every 5 minutes if no other activity
+local HEARTBEAT_TICKER_INTERVAL = 60  -- Check heartbeat every minute
 local CHARS_PER_MESSAGE = 5  -- Max characters to send in one CHARS_UPDATE message
 
 -- State
@@ -51,7 +56,7 @@ local function StartHeartbeat()
 	end
 	
 	-- Check every minute if we need to send a heartbeat manifest
-	heartbeatTimer = C_Timer.NewTicker(60, function()
+	heartbeatTimer = C_Timer.NewTicker(HEARTBEAT_TICKER_INTERVAL, function()
 		local now = time()
 		if now - lastManifestTime >= MANIFEST_HEARTBEAT_INTERVAL then
 			DebugPrint(string.format("Heartbeat: No manifest in %d seconds, sending one", now - lastManifestTime))
@@ -92,7 +97,7 @@ function Coordinator.SendCharsUpdate(battleTag, characters, charsUpdatedAt, chan
 			charsUpdatedAt = charsUpdatedAt,
 		}
 		
-		local message = ns.Sync.BuildMessage("C", charsData)  -- MSG_TYPE.CHARS_UPDATE = "C"
+		local message = ns.AddonMessages.BuildMessage(ns.MSG_TYPE.CHARS_UPDATE, charsData)
 		if not message then
 			print(ns.Constants.PREFIX_ERROR .. " Failed to build CHARS_UPDATE message")
 			return false
@@ -102,7 +107,7 @@ function Coordinator.SendCharsUpdate(battleTag, characters, charsUpdatedAt, chan
 		local totalChunks = math.ceil(totalChars / CHARS_PER_MESSAGE)
 		DebugPrint(string.format("Sending CHARS_UPDATE chunk %d/%d (%d bytes, %d chars)", chunkNum, totalChunks, #message, #chunk))
 		
-		if not ns.Sync.SendMessage(message, channel, target) then
+		if not ns.AddonMessages.SendMessage(message, channel, target) then
 			return false
 		end
 	end
@@ -125,16 +130,14 @@ function Coordinator.SendManifest()
 		aliasUpdatedAt = myProfile.aliasUpdatedAt,
 	}
 	
-	local message = ns.Sync.BuildMessage("M", data)  -- MSG_TYPE.MANIFEST = "M"
+	local message = ns.AddonMessages.BuildMessage(ns.MSG_TYPE.MANIFEST, data)
 	if not message then
 		print(ns.Constants.PREFIX_ERROR .. " Failed to build MANIFEST message")
 		return
 	end
 	
-	ns.Sync.SendMessage(message, "GUILD")
+	ns.AddonMessages.SendMessage(message, ChatType.Guild)
 	lastManifestTime = time()
-	
-	DebugPrint("Broadcast MANIFEST to guild")
 end
 
 --- Debounced manifest broadcast (waits a few seconds before sending)
@@ -144,8 +147,8 @@ function Coordinator.SendManifestDebounced()
 		manifestDebounceTimer:Cancel()
 	end
 	
-	-- Schedule new manifest in 2 seconds
-	manifestDebounceTimer = C_Timer.NewTimer(2, function()
+	-- Schedule new manifest
+	manifestDebounceTimer = C_Timer.NewTimer(MANIFEST_DEBOUNCE_SECONDS, function()
 		Coordinator.SendManifest()
 		manifestDebounceTimer = nil
 	end)
@@ -156,7 +159,6 @@ function Coordinator.OnGuildRosterUpdate()
 	-- Time-based sampling: Only allow roster events to trigger manifest once per interval
 	local now = time()
 	if now - lastRosterManifestTime < GUILD_ROSTER_MIN_INTERVAL then
-		DebugPrint(string.format("Roster event ignored (last roster manifest %ds ago, min interval %ds)", now - lastRosterManifestTime, GUILD_ROSTER_MIN_INTERVAL))
 		return
 	end
 	
@@ -169,10 +171,10 @@ function Coordinator.OnGuildRosterUpdate()
 		guildRosterManifestTimer:Cancel()
 	end
 	
-	-- Debounce for 5 seconds, then schedule manifest with random delay
-	guildRosterDebounceTimer = C_Timer.NewTimer(5, function()
-		-- Schedule manifest broadcast with random delay (2-10 seconds)
-		local randomDelay = math.random(2, 10)
+	-- Debounce, then schedule manifest with random delay
+	guildRosterDebounceTimer = C_Timer.NewTimer(GUILD_ROSTER_DEBOUNCE_SECONDS, function()
+		-- Schedule manifest broadcast with random delay
+		local randomDelay = math.random(GUILD_ROSTER_STORM_RANDOM_DELAY_RANGE[1], GUILD_ROSTER_STORM_RANDOM_DELAY_RANGE[2])
 		guildRosterManifestTimer = C_Timer.NewTimer(randomDelay, function()
 			Coordinator.SendManifest()
 			lastRosterManifestTime = time()  -- Update roster manifest timestamp

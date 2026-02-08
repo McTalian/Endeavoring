@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 --- Protocol Module
@@ -18,14 +18,14 @@ local ns = select(2, ...)
 --- 
 --- Dependencies:
 --- - ns.MessageCodec - Message encoding/decoding
---- - ns.Sync - Low-level message building and sending (BuildMessage, SendMessage)
+--- - ns.AddonMessages - Low-level message building and sending (BuildMessage, SendMessage)
 --- - ns.DB - Database access for profiles and characters
 --- - ns.CharacterCache - Character name → BattleTag lookups
 --- - ns.Coordinator - Character list chunking (SendCharsUpdate)
 --- - ns.Gossip - Opportunistic profile propagation
 --- 
 --- Usage:
----   -- In Sync.RegisterListener():
+---   -- In AddonMessages.RegisterListener():
 ---   frame:SetScript("OnEvent", function(_, event, prefix, message, channel, sender)
 ---     if event == "CHAT_MSG_ADDON" then
 ---       ns.Protocol.OnAddonMessage(prefix, message, channel, sender)
@@ -37,24 +37,17 @@ ns.Protocol = Protocol
 
 -- Shortcuts
 local DebugPrint = ns.DebugPrint
+local ChatType = ns.AddonMessages.ChatType
 local ERROR = ns.Constants.PREFIX_ERROR
 
 -- Constants
 local ADDON_PREFIX = "Ndvrng"
-
--- Message types (CBOR + compression protocol)
--- Values are intentionally short to minimize wire overhead
-local MSG_TYPE = {
-	MANIFEST = "M",
-	REQUEST_CHARS = "R",
-	ALIAS_UPDATE = "A",
-	CHARS_UPDATE = "C",
-}
+local MSG_TYPE = ns.MSG_TYPE  -- Shared message type enum
 
 --- Parse an encoded message and extract message type
 --- Message type is embedded in the CBOR payload
 --- @param encoded string The encoded message
---- @return string|nil messageType The message type (e.g., MSG_TYPE.MANIFEST)
+--- @return MessageType|nil messageType The message type
 --- @return table|nil data The decoded message data (including type field)
 local function ParseMessage(encoded)
 ---@diagnostic disable-next-line: param-type-mismatch
@@ -132,7 +125,6 @@ local function HandleManifest(sender, data)
 	-- Ignore our own manifests
 	local myBattleTag = ns.DB.GetMyBattleTag()
 	if battleTag == myBattleTag then
-		DebugPrint("Silly goose! Received our own MANIFEST, ignoring", "ff8800")
 		return
 	end
 	
@@ -165,10 +157,10 @@ local function HandleManifest(sender, data)
 			battleTag = battleTag,
 			afterTimestamp = afterTimestamp,
 		}
-		local message = ns.Sync.BuildMessage(MSG_TYPE.REQUEST_CHARS, requestData)
+		local message = ns.AddonMessages.BuildMessage(MSG_TYPE.REQUEST_CHARS, requestData)
 		if message then
 			DebugPrint(string.format("Sending REQUEST_CHARS to %s (after: %d)", battleTag, afterTimestamp))
-			ns.Sync.SendMessage(message, "WHISPER", sender)
+			ns.AddonMessages.SendMessage(message, ChatType.Whisper, sender)
 		end
 	end
 	
@@ -225,7 +217,7 @@ local function HandleRequestChars(sender, data)
 	end
 	
 	DebugPrint(string.format("Sending CHARS_UPDATE (%d chars total) to %s", #chars, sender))
-	ns.Coordinator.SendCharsUpdate(myProfile.battleTag, chars, myProfile.charsUpdatedAt, "WHISPER", sender)
+	ns.Coordinator.SendCharsUpdate(myProfile.battleTag, chars, myProfile.charsUpdatedAt, ChatType.Whisper, sender)
 end
 
 --- Handle incoming ALIAS_UPDATE message (CBOR format)
@@ -262,23 +254,13 @@ local function HandleAliasUpdate(sender, data)
 			DebugPrint(string.format("Tracked: %s knows about %s", senderBattleTag, battleTag))
 		end
 		
-		-- Check if sender has stale data
+		-- Bidirectional correction: if sender has stale data, gossip back the correct version
 		if existingProfile.aliasUpdatedAt and existingProfile.aliasUpdatedAt > aliasUpdatedAt then
 			DebugPrint(string.format("Sender has stale alias for %s (theirs: %d, ours: %d), gossiping back", 
 				battleTag, aliasUpdatedAt, existingProfile.aliasUpdatedAt))
 			
-			-- Gossip back the newer version
 			if senderBattleTag then
-				local aliasData = {
-					battleTag = battleTag,
-					alias = existingProfile.alias,
-					aliasUpdatedAt = existingProfile.aliasUpdatedAt,
-				}
-				local message = ns.Sync.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
-				if message then
-					ns.Sync.SendMessage(message, "WHISPER", sender)
-					DebugPrint(string.format("Sent updated alias for %s back to %s", battleTag, sender))
-				end
+				ns.Gossip.CorrectStaleAlias(sender, battleTag, existingProfile.alias, existingProfile.aliasUpdatedAt)
 			end
 			return  -- Don't update with stale data
 		end
@@ -325,19 +307,13 @@ local function HandleCharsUpdate(sender, data)
 			DebugPrint(string.format("Tracked: %s knows about %s", senderBattleTag, battleTag))
 		end
 		
-		-- Check if sender has stale data by comparing charsUpdatedAt timestamps
+		-- Bidirectional correction: if sender has stale data, gossip back the correct version
 		if existingProfile.charsUpdatedAt and existingProfile.charsUpdatedAt > senderCharsUpdatedAt then
 			DebugPrint(string.format("Sender has stale characters for %s (theirs: %d, ours: %d), gossiping back",
 				battleTag, senderCharsUpdatedAt, existingProfile.charsUpdatedAt))
 			
 			if senderBattleTag then
-				-- Send all characters added after their timestamp
-				local newerChars = ns.DB.GetProfileCharactersAddedAfter(battleTag, senderCharsUpdatedAt)
-				
-				if #newerChars > 0 then
-					ns.Coordinator.SendCharsUpdate(battleTag, newerChars, existingProfile.charsUpdatedAt, "WHISPER", sender)
-					DebugPrint(string.format("Sent %d updated character(s) for %s back to %s", #newerChars, battleTag, sender))
-				end
+				ns.Gossip.CorrectStaleChars(sender, battleTag, existingProfile.charsUpdatedAt, senderCharsUpdatedAt)
 			end
 		end
 	end
@@ -365,7 +341,7 @@ local function HandleCharsUpdate(sender, data)
 end
 
 --- Route message to appropriate handler
---- @param messageType string The message type
+--- @param messageType MessageType The message type
 --- @param sender string The sender's character name
 --- @param data table The decoded message data
 local function RouteMessage(messageType, sender, data)
@@ -394,6 +370,12 @@ function Protocol.OnAddonMessage(prefix, message, channel, sender)
 	if prefix ~= ADDON_PREFIX then
 		return
 	end
+
+	-- TODO: We can probably short circuit on our own messages here
+	-- but they are helpful for early testing.
+	-- Consider setting a "senderMe" var at early lifecycle of the
+	-- addon so that we can compare here and ignore our own messages.
+	-- Probably wrap it in an @alpha@ block to aid with future testing.
 	
 	local messageType, data = ParseMessage(message)
 	if not messageType or not data then

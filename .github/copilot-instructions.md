@@ -72,14 +72,16 @@ See [Development Status](docs/development-status.md) for detailed progress track
 
 ### Recent Major Work (February 2026)
 
-**Code Refactoring: Sync Module Extraction (Feb 7)** ✅
-- **Major architectural cleanup** of Services/Sync.lua (858 → 512 lines, 40% reduction)
-- **Created Sync/ folder** for sync protocol components (CharacterCache, Coordinator, Gossip)
-- **CharacterCache.lua (79 lines)**: Character→BattleTag O(1) lookup cache, reusable for leaderboard
+**Code Refactoring: Complete Sync Module Extraction + Architectural Improvements (Feb 7)** ✅
+- **Completed refactoring** of Services/Sync.lua → Services/AddonMessages.lua (858 → 162 lines, 81% reduction!)
+- **Created Sync/ folder** with 4 protocol modules: CharacterCache, Coordinator, Gossip, Protocol
+- **Protocol.lua (404→386 lines)**: Message parsing, routing, handlers for MANIFEST/REQUEST_CHARS/ALIAS_UPDATE/CHARS_UPDATE
+- **Gossip.lua (196→227 lines)**: Added bidirectional correction methods (CorrectStaleAlias, CorrectStaleChars)
 - **Coordinator.lua (199 lines)**: Orchestration, timing, heartbeat, roster throttling, chunking
-- **Gossip.lua (196 lines)**: Gossip protocol logic with profile selection and tracking
-- **Benefits**: Single responsibility, easier testing, better maintainability, clear layering
-- **Next**: Extract Protocol.lua (~250 lines) to complete refactoring
+- **CharacterCache.lua (79 lines)**: Character→BattleTag O(1) lookup cache, reusable for leaderboard
+- **MSG_TYPE enum** in Bootstrap.lua with `@enum` annotation for type safety across all modules
+- **Sync → AddonMessages rename**: Services/AddonMessages.lua now clearly reflects WoW API abstraction layer purpose
+- **Benefits**: Single responsibility, easier testing, better maintainability, clear layering, reduced duplication
 
 **Phase 4 Enhancements: Gossip Protocol & Performance (Feb 7)** ✅
 - **Roster Throttling**: Time-based sampling (60s min interval) + heartbeat manifests (every 5 min)
@@ -150,9 +152,10 @@ See [Development Status](docs/development-status.md) for detailed progress track
 
 The addon follows a clear separation of concerns:
 
-- **Services/** - WoW API abstractions (anything that could change between patches)
+- **Bootstrap.lua** - Constants, enums, and global utilities (MSG_TYPE enum, DebugPrint)
+- **Services/** - WoW API abstractions (AddonMessages for C_ChatInfo, PlayerInfo for UnitName/etc)
 - **Sync/** - Sync protocol components (CharacterCache, Coordinator, Gossip, Protocol)
-- **Data/** - Data persistence and access (SavedVariables management)
+- **Data/** - Data persistence and access (Database service over SavedVariables)
 - **Features/** - UI components and feature implementations  
 - **Integrations/** - Optional hooks into other addons or Blizzard frames
 

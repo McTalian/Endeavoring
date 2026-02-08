@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 local MessageCodec = {}
@@ -61,9 +61,6 @@ function MessageCodec.Encode(data)
 		return nil, "Base64 encoding failed"
 	end
 
-	local roughOriginalSize = #C_EncodingUtil.SerializeJSON(data)
-	DebugPrint(string.format("Encoded message: raw=%d bytes, serialized=%d bytes, compressed=%d bytes, encoded=%d bytes", roughOriginalSize, #serialized, #compressed, #encoded))
-	
 	return encoded, nil
 end
 

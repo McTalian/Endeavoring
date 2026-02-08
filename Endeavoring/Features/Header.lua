@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 local Header = {}

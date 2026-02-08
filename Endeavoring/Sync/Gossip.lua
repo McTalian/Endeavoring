@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 local Gossip = {}
@@ -8,6 +8,7 @@ ns.Gossip = Gossip
 
 -- Shortcuts
 local DebugPrint = ns.DebugPrint
+local ChatType = ns.AddonMessages.ChatType
 
 --[[
 Gossip Protocol - Opportunistic Profile Propagation
@@ -35,12 +36,7 @@ Future enhancement could prioritize profiles sender doesn't know.
 
 -- Configuration
 local MAX_PROFILES_PER_MANIFEST = 3  -- Max profiles to gossip per MANIFEST received
-
--- Message types (must match protocol constants)
-local MSG_TYPE = {
-	ALIAS_UPDATE = "A",
-	CHARS_UPDATE = "C",
-}
+local MSG_TYPE = ns.MSG_TYPE  -- Shared message type enum
 
 -- State
 -- Gossip tracking: lastGossip[senderBattleTag][profileBattleTag] = true
@@ -141,9 +137,9 @@ function Gossip.SendProfilesToPlayer(targetBattleTag, targetCharacter)
 			alias = profile.alias,
 			aliasUpdatedAt = profile.aliasUpdatedAt,
 		}
-		local aliasMessage = ns.Sync.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
+		local aliasMessage = ns.AddonMessages.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
 		if aliasMessage then
-			ns.Sync.SendMessage(aliasMessage, "WHISPER", targetCharacter)
+			ns.AddonMessages.SendMessage(aliasMessage, ChatType.Whisper, targetCharacter)
 		end
 		
 		-- Send characters update (with chunking if needed)
@@ -159,13 +155,48 @@ function Gossip.SendProfilesToPlayer(targetBattleTag, targetCharacter)
 		end
 		
 		if #characters > 0 then
-			ns.Coordinator.SendCharsUpdate(battleTag, characters, profile.charsUpdatedAt or 0, "WHISPER", targetCharacter)
+			ns.Coordinator.SendCharsUpdate(battleTag, characters, profile.charsUpdatedAt or 0, ChatType.Whisper, targetCharacter)
 		end
 		
 		-- Update gossip tracking (mark as gossiped to this BattleTag)
 		Gossip.MarkKnownProfile(targetBattleTag, battleTag)
 		
 		DebugPrint(string.format("  Gossiped %s (%s) with %d chars", battleTag, profile.alias, #characters))
+	end
+end
+
+--- Send alias correction when we detect sender has stale data
+--- Part of bidirectional gossip correction protocol
+--- @param sender string Character name of the sender
+--- @param battleTag string BattleTag of the profile being corrected
+--- @param correctAlias string The correct/newer alias
+--- @param correctTimestamp number The correct aliasUpdatedAt timestamp
+function Gossip.CorrectStaleAlias(sender, battleTag, correctAlias, correctTimestamp)
+	local aliasData = {
+		battleTag = battleTag,
+		alias = correctAlias,
+		aliasUpdatedAt = correctTimestamp,
+	}
+	local message = ns.AddonMessages.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
+	if message then
+		ns.AddonMessages.SendMessage(message, ChatType.Whisper, sender)
+		DebugPrint(string.format("Sent updated alias for %s back to %s", battleTag, sender))
+	end
+end
+
+--- Send character correction when we detect sender has stale data
+--- Part of bidirectional gossip correction protocol
+--- @param sender string Character name of the sender
+--- @param battleTag string BattleTag of the profile being corrected
+--- @param correctTimestamp number The correct charsUpdatedAt timestamp
+--- @param senderTimestamp number The sender's (stale) timestamp
+function Gossip.CorrectStaleChars(sender, battleTag, correctTimestamp, senderTimestamp)
+	-- Send all characters added after their timestamp
+	local newerChars = ns.DB.GetProfileCharactersAddedAfter(battleTag, senderTimestamp)
+	
+	if #newerChars > 0 then
+		ns.Coordinator.SendCharsUpdate(battleTag, newerChars, correctTimestamp, ChatType.Whisper, sender)
+		DebugPrint(string.format("Sent %d updated character(s) for %s back to %s", #newerChars, battleTag, sender))
 	end
 end
 

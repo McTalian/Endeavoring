@@ -1,10 +1,41 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
-local Sync = {}
-ns.Sync = Sync
+local AddonMessages = {}
+ns.AddonMessages = AddonMessages
+
+--[[
+Addon Messages - WoW API Abstraction Layer
+
+PURPOSE:
+Pure abstraction layer for WoW's addon communication API. Handles only the
+low-level mechanics of registering prefixes, building messages, and sending
+through WoW channels. Contains NO business logic or protocol knowledge.
+
+RESPONSIBILITIES:
+- Register addon message prefix with WoW
+- Build CBOR-encoded messages for transmission
+- Send messages via C_ChatInfo.SendAddonMessage
+- Message size validation and lockdown checks
+- Error handling and result code interpretation
+
+PUBLIC API:
+- AddonMessages.Init() - Register prefix and initialize coordinator
+- AddonMessages.BuildMessage(messageType, data) - Encode message for transmission
+- AddonMessages.SendMessage(message, channel, target) - Transmit to WoW
+- AddonMessages.RegisterListener() - Set up CHAT_MSG_ADDON event handler
+
+LAYERING:
+Services/AddonMessages (this file) → WoW API only
+Sync/Protocol → Message parsing and routing
+Sync/Coordinator → Timing and orchestration
+Sync/Gossip → Profile propagation logic
+
+MESSAGE TYPES:
+Defined in Bootstrap.lua as ns.MSG_TYPE enum for type safety and reuse.
+--]]
 
 -- Shortcuts
 local ERROR = ns.Constants.PREFIX_ERROR
@@ -12,23 +43,19 @@ local DebugPrint = ns.DebugPrint
 
 -- Constants
 local ADDON_PREFIX = "Ndvrng"
-local CHANNEL_GUILD = "GUILD"
-local MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit for addon messages
-
--- Message types (CBOR + compression protocol)
--- Values are intentionally short to minimize wire overhead
-local MSG_TYPE = {
-	MANIFEST = "M",
-	REQUEST_CHARS = "R",
-	ALIAS_UPDATE = "A",
-	CHARS_UPDATE = "C",
+---@enum Channels
+AddonMessages.ChatType = {
+	Guild = "GUILD",
+	Party = "PARTY",
+	Whisper = "WHISPER",
 }
+local MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit for addon messages
 
 -- State
 local initialized = false
 
---- Initialize the sync service
-function Sync.Init()
+--- Initialize the addon message service
+function AddonMessages.Init()
 	if initialized then
 		return
 	end
@@ -50,14 +77,10 @@ end
 
 --- Build a message with CBOR-encoded payload
 --- Message type is included in the CBOR payload to avoid string+binary mixing
---- @param messageType string The message type (e.g., MSG_TYPE.MANIFEST)
---- @param data table The data to encode
---- @return string|nil message The complete encoded message, or nil on encoding failure
---- Build a message for transmission (exposed for Coordinator)
---- @param messageType string The message type
+--- @param messageType MessageType The message type
 --- @param data table The message data
 --- @return string|nil encoded The encoded message or nil on failure
-function Sync.BuildMessage(messageType, data)
+function AddonMessages.BuildMessage(messageType, data)
 	-- Include message type in the payload
 	data.type = messageType
 	
@@ -80,17 +103,17 @@ end
 
 
 
---- Send a message via addon communication (exposed for Coordinator)
+--- Send a message via addon communication
 --- @param message string The message to send
---- @param channel string The channel to send on (default: GUILD)
+--- @param channel Channels The channel to send on (default: ChatType.Party)
 --- @param target string|nil The target player for whisper messages
 --- @return boolean success Whether the message was sent successfully
-function Sync.SendMessage(message, channel, target)
+function AddonMessages.SendMessage(message, channel, target)
 	if not initialized then
 		return false
 	end
 	
-	channel = channel or CHANNEL_GUILD
+	channel = channel or ChatType.Party
 	
 	-- Pre-flight validation: check for chat messaging lockdown (instances, restricted zones)
 	if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
@@ -109,8 +132,6 @@ function Sync.SendMessage(message, channel, target)
 	end
 	
 	if C_ChatInfo and C_ChatInfo.SendAddonMessage then
-		DebugPrint(string.format("Sending %d byte message on channel %s", #message, channel))
-		
 		-- Send and check return code
 		local result = C_ChatInfo.SendAddonMessage(ADDON_PREFIX, message, channel, target)
 		
@@ -147,9 +168,9 @@ function Sync.SendMessage(message, channel, target)
 end
 
 --- Register event listener for addon messages
-function Sync.RegisterListener()
+function AddonMessages.RegisterListener()
 	if not initialized then
-		Sync.Init()
+		AddonMessages.Init()
 	end
 	
 	local frame = CreateFrame("Frame")

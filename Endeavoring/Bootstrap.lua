@@ -1,6 +1,6 @@
 ---@type string
 local addonName = select(1, ...)
----@class HDENamespace
+---@class Ndvrng_NS
 local ns = select(2, ...)
 
 ns.Constants = ns.Constants or {
@@ -23,6 +23,16 @@ ns.Constants = ns.Constants or {
 	PREFIX_INFO = "|cff00ff00Endeavoring:|r",
 	PREFIX_ERROR = "|cffff0000Endeavoring:|r",
 	PREFIX_WARN = "|cffff8800Endeavoring:|r",
+}
+
+--- Message types for sync protocol (CBOR + compression)
+--- Values are intentionally short to minimize wire overhead
+---@enum MessageType
+ns.MSG_TYPE = {
+	MANIFEST = "M",
+	REQUEST_CHARS = "R",
+	ALIAS_UPDATE = "A",
+	CHARS_UPDATE = "C",
 }
 
 ns.state = ns.state or {

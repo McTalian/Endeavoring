@@ -224,9 +224,9 @@ ns.API.RequestActivityLog()
 2. Integrate BattleTag mapping from sync profiles
 3. Create UI panel using same pattern (event-driven + loading spinner)
 
-### Phase 4: Testing & Polish �
+### Phase 4: Testing & Polish + Code Quality 🔬
 
-**Status**: In Progress (Active Testing)
+**Status**: In Progress (Active Testing & Refactoring)
 
 **Completed** (Feb 7, 2026):
 - [x] Multi-account testing (2 accounts, 9 characters)
@@ -234,6 +234,7 @@ ns.API.RequestActivityLog()
 - [x] Restricted zone messaging (lockdown detection)
 - [x] Backward compatibility validation
 - [x] Gossip protocol verification
+- [x] **Major code refactoring** (see Phase 4.5 below)
 
 **In Progress**:
 - [ ] Large character list testing (15+ characters)
@@ -242,31 +243,112 @@ ns.API.RequestActivityLog()
 - [ ] Performance testing (large guilds, many characters)
 
 **Goals**:
-- [ ] Comprehensive multi-account testing across various scenarios
+- [x] Comprehensive multi-account testing across various scenarios
 - [ ] Performance testing (large guilds, many characters)
 - [ ] Edge case handling (offline sync, partial data, etc.)
 - [ ] Debug commands for troubleshooting
+
+### Phase 4.5: Code Quality - Sync Module Refactoring ✅
+
+**Status**: Complete (Feb 7, 2026)
+
+**Problem**: Services/Sync.lua had grown to 858 lines with mixed responsibilities (WoW API, protocol handling, orchestration, gossip logic, caching).
+
+**Goals**:
+- [x] Extract distinct responsibilities into focused modules
+- [x] Improve testability and maintainability
+- [x] Create reusable components (character cache for leaderboard)
+- [x] Clear architectural boundaries
+
+**Completed Work**:
+
+1. **Protocol.lua Extraction** (404 lines → 386 after gossip extraction)
+   - Message parsing (ParseMessage, ValidateBattleTag, ValidateTimestamp)
+   - Message routing (RouteMessage)
+   - All handlers: HandleManifest, HandleRequestChars, HandleAliasUpdate, HandleCharsUpdate
+   - Database updates and character cache invalidation
+   - Public API: `Protocol.OnAddonMessage(prefix, message, channel, sender)`
+
+2. **CharacterCache.lua** (79 lines)
+   - O(1) character name → BattleTag lookups
+   - Lazy cache rebuilding when stale
+   - Reusable for leaderboard feature
+   - Public API: `FindBattleTag()`, `Invalidate()`, `GetStats()`
+
+3. **Coordinator.lua** (199 lines)
+   - Orchestration and timing logic
+   - Heartbeat timer (5-minute idle manifests)
+   - Roster event throttling (max 1 per minute)
+   - Character list chunking (5 per message)
+   - Manifest debouncing and scheduling
+   - Public API: `Init()`, `SendManifest()`, `SendCharsUpdate()`, `GetSyncStats()`
+
+4. **Gossip.lua** (196 → 227 lines)
+   - Opportunistic profile propagation
+   - Profile selection algorithm
+   - Per-session gossip tracking
+   - **Bidirectional correction**: `CorrectStaleAlias()`, `CorrectStaleChars()`
+   - Public API: `MarkKnownProfile()`, `SendProfilesToPlayer()`, `CorrectStaleAlias()`, `CorrectStaleChars()`, `GetStats()`
+
+5. **Sync → AddonMessages Rename** (162 lines, 81% reduction!)
+   - Services/Sync.lua → Services/AddonMessages.lua
+   - Reflects true responsibility: WoW addon message API abstraction
+   - Pure WoW API layer: Init, BuildMessage, SendMessage, RegisterListener
+
+6. **MSG_TYPE Enum** (Bootstrap.lua)
+   - Shared constant across all modules
+   - Type annotation: `---@enum MessageType`
+   - Single source of truth for message types
+   - No more duplication across files
+
+**Benefits**:
+- **Single Responsibility**: Each module has one clear purpose
+- **Easier Testing**: 79-227 line modules vs 858-line monolith
+- **Better Maintainability**: Clear boundaries reduce cognitive load
+- **Reusability**: CharacterCache usable for leaderboard feature
+- **Type Safety**: MSG_TYPE enum enables IDE autocomplete
+- **Clear Layering**: Bootstrap → Services → Data → Sync → Features
+
+**Metrics**:
+- Original: 858 lines (monolithic Sync.lua)
+- Final: 162 lines (AddonMessages.lua) + 878 lines (4 Sync modules)
+- Protocol handlers: 81% reduction in AddonMessages.lua
+- Documentation: All module headers updated to reflect new architecture
 
 ## Current Architecture
 
 ```
 Endeavoring/
-├── Bootstrap.lua          # Constants (including message prefixes), namespace init
+├── Bootstrap.lua          # Constants, enums (MSG_TYPE), namespace init, DebugPrint
 ├── Commands.lua          # ✅ Slash command handlers
 ├── Core.lua              # Main frame, events, initialization
 ├── Data/
-│   └── Database.lua      # ✅ Complete - Data access layer (verbose mode toggle)
+│   └── Database.lua      # ✅ Complete - Data access layer (483 lines)
 ├── Features/
 │   ├── Header.lua        # Endeavor info display
+│   ├── Leaderboard.lua   # ✅ CLI leaderboard (untested)
 │   └── Tasks.lua         # Task list
 ├── Integrations/
 │   └── HousingDashboard.lua  # Blizzard frame integration
-└── Services/
-    ├── MessageCodec.lua      # ✅ Complete - CBOR + compression codec
-    ├── NeighborhoodAPI.lua   # Neighborhood/Initiative APIs
-    ├── PlayerInfo.lua        # ✅ Complete - Player info APIs
-    └── Sync.lua              # ✅ Complete - Communication + gossip layer
+├── Services/
+│   ├── AddonMessages.lua     # ✅ WoW addon message API (162 lines, was Sync.lua)
+│   ├── MessageCodec.lua      # ✅ CBOR + compression + Base64
+│   ├── NeighborhoodAPI.lua   # Neighborhood/Initiative APIs
+│   └── PlayerInfo.lua        # ✅ Player info APIs
+└── Sync/
+    ├── CharacterCache.lua    # ✅ O(1) character→BattleTag lookups (79 lines)
+    ├── Coordinator.lua       # ✅ Orchestration, timing, throttling (199 lines)
+    ├── Gossip.lua           # ✅ Profile propagation + correction (227 lines)
+    └── Protocol.lua         # ✅ Message handlers and routing (386 lines)
 ```
+
+**Architecture Principles**:
+- **Bootstrap.lua** - Shared constants and utilities
+- **Services/** - WoW API abstractions (change between patches)
+- **Sync/** - Protocol components (business logic, stable)
+- **Data/** - Persistence layer (SavedVariables)
+- **Features/** - UI and user-facing functionality
+- **Integrations/** - Hooks into Blizzard/other addon frames
 
 **Missing Components**:
 - `Features/Settings.lua` - Options panel *(Phase 2)*
