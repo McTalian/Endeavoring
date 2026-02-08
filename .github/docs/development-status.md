@@ -4,6 +4,15 @@
 
 ## Recent Work 🎉
 
+**Guard Clause Cleanup & Documentation Enhancement (Feb 7)** ✅
+- **Guard review**: Identified and removed 4 unnecessary guards hiding loading order issues
+- **Code cleanup**: Tasks.lua and Core.lua now fail fast on internal module issues
+- **TOC loading documentation**: Added detailed explanation of when code executes during load
+- **Comparison table**: Runtime vs loading checks quick reference guide
+- **Validation section**: Added make commands (toc_check, dev, watch) to conditional instructions
+- **Maintenance guidelines**: Documented which docs to update for different types of changes
+- **In-game validation**: Confirmed no Lua errors with cleaned-up guards
+
 **Workflow Optimization & Documentation Restructuring (Feb 7)** ✅
 - **Created `/refactor` workflow**: Comprehensive multi-file refactoring with GPT-5.1-Codex-Max delegation
 - **Context optimization**: Reduced main instructions from 252→157 lines (38% reduction)
