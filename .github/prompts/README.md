@@ -10,6 +10,24 @@ Prompt files are reusable chat instructions that can be invoked with slash comma
 - Include built-in validation and error recovery
 - Make complex multi-step processes simple and reliable
 
+## Context Awareness
+
+When executing workflows, different types of context are automatically available:
+
+**Always Available**:
+- `.github/copilot-instructions.md` - Core collaboration guidelines, model selection, workflow references
+- Project structure and file organization
+
+**Auto-Loaded by File Type**:
+- **Editing Lua files** → `.github/instructions/lua-development.instructions.md` and `wow-api.instructions.md` automatically load
+- Provides language-specific patterns, conventions, and WoW API guidance
+
+**On-Demand** (linked when needed):
+- Architecture, database schema, sync protocol, glossary, resources
+- Loaded via explicit references in conversation
+
+This layered approach ensures workflows have just the right context without overwhelming the agent.
+
 ## Available Workflows
 
 ### 🔧 `/refactor [description]` - Smart Refactoring

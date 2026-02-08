@@ -101,12 +101,16 @@ Access components via namespace:
 
 ### Guard Clauses
 
-**Use guards for external/optional dependencies:**
+Guards handle **runtime concerns**, not loading order issues.
+
+**TOC Loading**: Files execute only root-level code during load. Function definitions don't execute until called (after all files load). Core.lua loads last and starts the initialization chain.
+
+**Use guards for runtime concerns:**
 
 ```lua
--- Blizzard APIs (may not exist in all versions)
-if C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo then
-  return C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo()
+-- External APIs (may not exist in all client versions)
+if C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetInitiativeInfo then
+  return C_NeighborhoodInitiative.GetInitiativeInfo()
 end
 
 -- Optional integrations (addon may not be loaded)
@@ -115,34 +119,34 @@ if integration and integration.EnsureLoaded() then
   integration.RegisterButtonHook()
 end
 
--- Runtime state (created only when needed)
+-- Lazy UI elements (created on-demand, may not exist yet)
 local mainFrame = ns.ui and ns.ui.mainFrame
 if not mainFrame then
   return
 end
 ```
 
-**DO NOT use guards for our own code:**
+**DO NOT guard internal modules (fail fast on bugs):**
 
 ```lua
--- WRONG - unnecessary guard
+-- ❌ WRONG - hides load order bug
 if ns.DB and ns.DB.Init then
   ns.DB.Init()
 end
 
--- RIGHT - fail fast if load order is broken
+-- ✅ RIGHT - errors immediately during testing
 ns.DB.Init()
 
--- WRONG - unnecessary guard
+-- ❌ WRONG - masks TOC ordering issue
 if ns.Tasks and ns.Tasks.Refresh then
   ns.Tasks.Refresh()
 end
 
--- RIGHT - fail fast
+-- ✅ RIGHT - reveals bugs during development
 ns.Tasks.Refresh()
 ```
 
-**Why**: If our own services don't exist, that's a load order bug. We want it to fail loudly during testing, not silently skip functionality.
+**Why fail fast**: If internal modules are nil when called, it indicates a bug (wrong TOC order, premature root-level execution, missing module registration). Let it error during testing rather than hiding the problem.
 
 ### File Load Order (TOC)
 

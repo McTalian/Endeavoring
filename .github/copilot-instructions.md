@@ -101,152 +101,82 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Phase 4 (In-Game Testing - Ongoing)
-**Next Phase**: Phase 2 (Options UI) or Leaderboard UI
+**Current Phase**: Phase 4 (In-Game Testing - Ongoing)  
+**Recent Work**: Context optimization (252→157 lines in main instructions), `/refactor` workflow with GPT-5.1-Codex-Max delegation, conditional Lua instructions, on-demand documentation structure
 
-See [Development Status](docs/development-status.md) for detailed progress tracking and roadmap.
+See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 
-### Recent Major Work (February 2026)
+## Architecture Overview
 
-**Code Refactoring: Complete Sync Module Extraction + Architectural Improvements (Feb 7)** ✅
-- **Completed refactoring** of Services/Sync.lua → Services/AddonMessages.lua (858 → 162 lines, 81% reduction!)
-- **Created Sync/ folder** with 4 protocol modules: CharacterCache, Coordinator, Gossip, Protocol
-- **Protocol.lua (404→386 lines)**: Message parsing, routing, handlers for MANIFEST/REQUEST_CHARS/ALIAS_UPDATE/CHARS_UPDATE
-- **Gossip.lua (196→227 lines)**: Added bidirectional correction methods (CorrectStaleAlias, CorrectStaleChars)
-- **Coordinator.lua (199 lines)**: Orchestration, timing, heartbeat, roster throttling, chunking
-- **CharacterCache.lua (79 lines)**: Character→BattleTag O(1) lookup cache, reusable for leaderboard
-- **MSG_TYPE enum** in Bootstrap.lua with `@enum` annotation for type safety across all modules
-- **Sync → AddonMessages rename**: Services/AddonMessages.lua now clearly reflects WoW API abstraction layer purpose
-- **Benefits**: Single responsibility, easier testing, better maintainability, clear layering, reduced duplication
+The addon follows clear separation of concerns:
 
-**Phase 4 Enhancements: Gossip Protocol & Performance (Feb 7)** ✅
-- **Roster Throttling**: Time-based sampling (60s min interval) + heartbeat manifests (every 5 min)
-- **Sync Stats Command**: `/endeavoring sync stats` shows timing, next heartbeat, roster windows
-- **Gossip Improvements**: Skip recipient's profile, track sender knowledge, bidirectional correction
-- **Performance**: O(1) character→BattleTag cache, gossip helper functions, charsUpdatedAt in messages
-- **Smart Delta Sync**: Compare timestamps first, only send newer characters using `GetProfileCharactersAddedAfter()`
+- **Bootstrap.lua** - Constants, enums, global utilities
+- **Services/** - WoW API abstractions (AddonMessages, PlayerInfo, MessageCodec, NeighborhoodAPI)
+- **Sync/** - Protocol components (CharacterCache, Coordinator, Gossip, Protocol)
+- **Data/** - Persistence layer (Database over SavedVariables)
+- **Features/** - UI and functionality (Tasks, Leaderboard, Header)
+- **Integrations/** - Hooks into Blizzard frames (HousingDashboard)
 
-**Phase 4 Testing: Chunking & Lockdown Handling (Feb 7)** ✅
-- Multi-account testing revealed message size limit hit at 9 characters (~260 bytes)
-- Implemented character list chunking: 5 characters per CHARS_UPDATE message
-- Added `SendCharsUpdate()` helper with automatic chunking and progress tracking
-- Discovered error code 11 (AddOnMessageLockdown) in instances/restricted zones
-- Added pre-flight lockdown check using `C_ChatInfo.InChatMessagingLockdown()`
-- Prevents message send attempts in restricted areas (no more error spam)
-- Validated chunking works correctly: 9 chars → 2 chunks, received properly
-- Backward compatible: Old builds receive chunked messages without issues
+**Sync Protocol Summary:**
+- MANIFEST broadcasts to GUILD on login/roster updates
+- REQUEST_CHARS and CHARS_UPDATE via WHISPER
+- Alias synced in MANIFEST (no separate message needed)
+- Guild roster updates: 5s debounce + 2-10s random delay
 
-**MessageCodec Bug Fix (Feb 7)** ✅
-- Fixed critical bug: WoW addon message API corrupts raw binary data
-- Root cause: Compressed binary contains patterns that break transmission
-- Solution: Three-step encoding (CBOR → Compress → Base64)
-- Base64 converts binary to safe ASCII for reliable transmission
-- Tested multiple approaches (plain CBOR, double-CBOR wrapping) before finding solution
-- Compression still effective: ~16% total size reduction (115→96 bytes typical)
-- Ready for Phase 4 in-game testing
+See [Architecture](docs/architecture.md) for complete conventions, directory structure, and coding standards.
 
-**Leaderboard POC (Untested)** 📊
-- CLI leaderboard via `/endeavoring leaderboard [all|today|week]`
-- Aggregates activity log by player with time filtering
-- Async event-driven data fetching pattern
-- Ready for UI integration (same pattern for panel)
-- Documentation: [testing-phase4.md](docs/testing-phase4.md)
+## Where to Find Information
 
-**Message Codec (CBOR + Compression)** ✅
-- Implemented CBOR serialization for structured, type-safe messages
-- Automatic Deflate compression for messages >100 bytes (40-60% size reduction)
-- Protocol versioning with version + flags bytes for future evolution
-- Single-character message type identifiers (M, R, A, C) for wire efficiency
-- Defense-in-depth error handling: size validation + return code checking
-- Comprehensive error messages for test users to identify sync issues
-- Full V1 removal - clean break to CBOR-only (0 users, alpha phase)
-- Documentation: [message-codec.md](docs/message-codec.md)
+**Always-On Context:**
+- This file - Essential collaboration guidelines and workflow
+- Conditional instructions - Auto-loaded for Lua files
 
-**Phase 3.5 - Gossip Protocol** ✅
-- Implemented opportunistic profile propagation via gossip
-- BattleTag-based tracking (handles alt-swapping elegantly)
-- Per-session gossip limits (no time-based cooldowns)
-- Rate limiting: Max 3 profiles per MANIFEST received
-- Gossip statistics via `/endeavoring sync gossip`
+**On-Demand Reference** (link when needed):
+- [Development Status](docs/development-status.md) - Progress, roadmap, recent work
+- [Architecture](docs/architecture.md) - Complete structure and conventions
+- [Database Schema](docs/database-schema.md) - Data structure and access patterns
+- [Sync Protocol](docs/sync-protocol.md) - Communication protocol details
+- [Message Codec](docs/message-codec.md) - CBOR encoding and compression
+- [Glossary](docs/glossary.md) - WoW and addon terminology
+- [Resources](docs/resources.md) - WoW API docs and helpful references
+- [Testing Phase 4](docs/testing-phase4.md) - Current testing procedures
 
-**Phase 3 - Direct Sync** ✅
-- Database service with authoritative `myProfile` and synced `profiles`
-- Character registration on login  
-- Alias management via `/endeavoring alias <name>`
-- Timestamp-based delta sync strategy (`aliasUpdatedAt` and `charsUpdatedAt`)
-- Architecture cleanup: Services/ for WoW APIs, Data/ for persistence
-- Full sync protocol implementation (MANIFEST broadcast, whisper-based requests/responses)
-- Guild roster update triggering with debouncing and random delay
-- Realm handling fix with GetNormalizedRealmName() fallback
+**Workflows:**
+- `/refactor` - Complex multi-file refactoring with GPT-5.1-Codex-Max
+- `/plan` - Feature planning and design
+- `/park` - Save session progress for handoff
+- `/resume` - Restore from parked session
+- `/review` - Code review
 
-**Code Quality Improvements** ✅
-- Verbose debug mode toggle (`/endeavoring sync verbose`)
-- Slash commands refactored to Commands.lua with discrete handlers
-- Message prefix constants (INFO, ERROR, WARN) in Bootstrap.lua
-
-## Architecture & Conventions
-
-The addon follows a clear separation of concerns:
-
-- **Bootstrap.lua** - Constants, enums, and global utilities (MSG_TYPE enum, DebugPrint)
-- **Services/** - WoW API abstractions (AddonMessages for C_ChatInfo, PlayerInfo for UnitName/etc)
-- **Sync/** - Sync protocol components (CharacterCache, Coordinator, Gossip, Protocol)
-- **Data/** - Data persistence and access (Database service over SavedVariables)
-- **Features/** - UI components and feature implementations  
-- **Integrations/** - Optional hooks into other addons or Blizzard frames
-
-**Sync Protocol Notes:**
-- MANIFEST broadcasts to GUILD channel on login and guild roster updates
-- Alias synced directly from MANIFEST (no separate REQUEST_ALIAS needed)
-- REQUEST_CHARS and CHARS_UPDATE use WHISPER to reduce guild spam
-- Guild roster updates trigger manifests with 5s debounce + 2-10s random delay
-
-**Key Convention - Guard Clauses:**
-- ✅ Use guards for external/optional dependencies (Blizzard APIs, other addons, runtime state)
-- ❌ Don't use guards for our own code (fail fast if load order is broken)
-
-Example:
-```lua
--- Good - external API guard
-if C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo then
-  return C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo()
-end
-
--- Good - no guard for our own code (fail fast)
-ns.DB.Init()
-ns.Tasks.Refresh()
-
--- Bad - unnecessary guard hides load order bugs
-if ns.DB and ns.DB.Init then
-  ns.DB.Init()
-end
-```
-
-See [Architecture](docs/architecture.md) for complete conventions and directory structure.
+See [.github/prompts/README.md](.github/prompts/README.md) for workflow details.
 
 ## Technical Documentation
 
-Detailed technical documentation is available in `.github/docs/`:
+Detailed technical documentation is available in `.github/docs/`. Link to specific docs as needed rather than loading all context upfront.
 
-- **[Database Schema](docs/database-schema.md)** - Data structure, timestamp strategy, access patterns
-- **[Sync Protocol](docs/sync-protocol.md)** - Communication protocol design for player profile syncing  
-- **[Architecture](docs/architecture.md)** - Project structure, conventions, coding standards
-- **[Development Status](docs/development-status.md)** - Progress tracking, roadmap, recent decisions
+**Tip:** When working on a specific feature or system, reference the relevant doc to load detailed context into the conversation.
 
-Reference these documents when:
-- Working on data access or persistence
-- Implementing communication/sync features
-- Needing context on architectural decisions
-- Planning new features or refactoring
+## Documentation Maintenance
 
-## WoW Contextual Terminology
+When making changes that affect conventions, patterns, or architectural decisions, update documentation systematically:
 
-- **Neighborhood**: A group of housing plots in the WoW world where players can own a home, participate in quests and events around the neighborhood, and interact with their neighbors.
-- **Endeavors**: A Time-based challenge (I believe Monthly) for the whole neighborhood to complete together. Rewards include a currency item (Community Coupons) that can be used to purchase various decor items for the players' homes. An Endeavor has Milestones which will unlock new decor items at the Endeavor vendor. Completing the entire Endeavor rewards a relatively large sum of the currency. A neighborhood leader will choose which Endeavor the neighborhood will pursue from a selection of 3 available Endeavors, each with a different theme and associated tasks.
-- **Endeavor Tasks**: Small tasks that each player can complete to contribute to the neighborhood's progress on the Endeavor. Tasks can include things like "Complete 5 quests in the zone" or "Kill 10 monsters of a certain type in the zone" as well as objectives around the neighborhood itself like tidying up the neighborhood or repairing structures. Each task rewards a certain number of points towards the neighborhood's progress on the Endeavor, House XP for the player to upgrade their house, and some currency. These tasks vary in terms of their requirements and rewards, and can be completed by players at their own pace throughout the duration of the Endeavor. At the time of writing, the tasks are repeatable.
-- **Activity**: A log of completed Endeavor Tasks within the neighborhood. Each activity entry includes details about the task that was completed and the player who completed it, though the API seems to provide the `taskName`, `playerName`, `taskID`, `amount` (of points contributed to the endeavor by this task completion), and `completionTime`.
+**Pattern/Convention Changes** → Update conditional instructions:
+- `.github/instructions/lua-development.instructions.md` - Lua patterns, guards, validation
+- `.github/instructions/wow-api.instructions.md` - WoW API usage, terminology
 
-## Features Under Consideration
+**Architectural Changes** → Update core documentation:
+- `.github/docs/architecture.md` - Directory structure, conventions, file organization
+- `.github/docs/database-schema.md` - Data structure changes
+- `.github/docs/sync-protocol.md` - Communication protocol changes
 
-- **Sorting Endeavor Tasks** Currently tasks are loosely grouped by the location that they need to be completed in (the neighborhood, the zone associated with the Endeavor "theme"), but there is no way to sort or filter the list of tasks. Adding sorting and filtering options could help players find the tasks that are most relevant to them and complete them more efficiently. Some tasks "overlap" in that they can be completed in the same activity (for example, killing raid bosses in the associated zone may also contribute towards the general "kill raid bosses" task), and being able to easily identify these overlapping tasks and complete them together could be a nice quality of life improvement.
-- **Leaderboard**: Adding a leaderboard to the Endeavoring addon could help foster a sense of friendly competition among neighbors and encourage more active participation in the Endeavors system. Currently, the Activity Log entries are associated with the "player name," but with the Endeavoring addon, we could associate them with the player's BattleTag instead (as long as a given character was using the Endeavoring addon when logged in). This would allow us to create a leaderboard that ranks players based on their contributions to the neighborhood's progress on the Endeavor, and could include additional features such as filtering by time period (this week, today, etc.) or by specific tasks completed. A leaderboard could also provide an additional incentive for players to complete more tasks and contribute more to the neighborhood's progress, which could help create a more engaging and rewarding experience for users of the Endeavoring addon.
+**Decision Rationale** → Record in status doc:
+- `.github/docs/development-status.md` - Add to "Recent Architectural Decisions" with date, decision, rationale, and impact
+
+**Cross-cutting Updates** → May need multiple files:
+- Example: Guard clause convention change required updates to lua-development.instructions.md (pattern), architecture.md (convention), and development-status.md (rationale)
+
+**Workflow Changes** → Update workflow docs:
+- `.github/prompts/*.prompt.md` - Individual workflow files
+- `.github/prompts/README.md` - Workflow index and usage guide
+
+**When in doubt**: Update the most specific applicable file, then check if the main instructions need a brief mention or link.

@@ -2,9 +2,17 @@
 
 **Last Updated**: February 7, 2026
 
-## Recent Fix 🎉
+## Recent Work 🎉
 
-**MessageCodec Bug - RESOLVED** (Feb 7, 2026)
+**Workflow Optimization & Documentation Restructuring (Feb 7)** ✅
+- **Created `/refactor` workflow**: Comprehensive multi-file refactoring with GPT-5.1-Codex-Max delegation
+- **Context optimization**: Reduced main instructions from 252→157 lines (38% reduction)
+- **Conditional instructions**: Created lua-development.instructions.md and wow-api.instructions.md (auto-load for Lua files)
+- **On-demand docs**: Extracted glossary.md (99 lines) and resources.md (180 lines) for as-needed loading
+- **Workflow documentation**: Created comprehensive prompts/README.md documenting all 5 workflows
+- **Benefits**: Longer agent sessions, more efficient park/resume, context-aware guidance for Lua development
+
+**MessageCodec Bug - RESOLVED (Feb 7)** ✅
 - **Issue**: Raw binary data (compressed CBOR) corrupted during addon message transmission
 - **Root Cause**: WoW's addon message API has undocumented quirks with binary data patterns
 - **Solution**: Three-step encoding: CBOR → Deflate → Base64 (makes binary safe as ASCII)
@@ -419,11 +427,13 @@ Codebase is clean and well-organized:
 - **Rationale**: Cleaner separation of concerns, easier testing, clear dependency boundaries
 - **Impact**: All future WoW API wrappers go in `Services/`, data access in `Data/`
 
-### Guard Clauses (2026-02-06)
+### Guard Clauses (2026-02-06, updated 2026-02-07)
 
 - **Decision**: Only use guards for external/optional dependencies, not our own code
-- **Rationale**: Load order bugs should fail loudly in testing, not silently skip functionality
+- **Rationale**: TOC loading only executes root-level code; functions are just defined (don't execute until called after all files load). Load order bugs should fail loudly during testing, not be hidden by guards.
 - **Rule**: Guard `C_*` APIs and optional integrations; don't guard `ns.DB`, `ns.API`, etc.
+- **Why fail fast**: If internal modules are nil when called, it's a bug (wrong TOC order, premature root-level execution). Let it error immediately rather than masking the problem.
+- **Update (2026-02-07)**: Documented TOC loading behavior in lua-development.instructions.md and architecture.md
 
 ### Timestamp Strategy (2026-02-06)
 
@@ -507,6 +517,12 @@ Codebase is clean and well-organized:
 - Verbose debug mode toggle (GUI alternative to slash command)
 
 ### Future Enhancements
+
+**Task Sorting & Filtering**:
+- Sort/filter task list beyond basic location grouping
+- Help players find relevant tasks efficiently
+- Identify overlapping tasks for combined completion
+- Example: Raid boss kills may count toward multiple tasks
 
 **Catalog Exchange (Phase 3.6)**:
 - Exchange BattleTag lists to discover completely missed profiles
@@ -610,3 +626,6 @@ See [copilot-instructions.md](../.github/copilot-instructions.md#agent--model-se
 - [Database Schema](database-schema.md) - Data structure and access patterns
 - [Sync Protocol](sync-protocol.md) - Communication protocol design
 - [Architecture](architecture.md) - Project structure and conventions
+- [Message Codec](message-codec.md) - CBOR encoding and compression
+- [Glossary](glossary.md) - WoW and addon terminology
+- [Resources](resources.md) - WoW API documentation and references
