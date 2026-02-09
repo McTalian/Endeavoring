@@ -4,6 +4,7 @@
 ## Version: @project-version@
 ## Notes: Improvements to the Endeavors frame for your Neighborhood.
 ## SavedVariables: EndeavoringDB
+## IconTexture: Interface/AddOns/Endeavoring/Icons/endeavoring
 ## X-GitHub: https://github.com/Mctalian/RPGLootFeed
 ## X-Discord: https://discord.gg/czRYVWhe33
 ## X-Curse-Project-ID: 
