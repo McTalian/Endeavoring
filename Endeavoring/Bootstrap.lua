@@ -6,12 +6,6 @@ local ns = select(2, ...)
 ns.Constants = ns.Constants or {
 	FRAME_WIDTH = 620,
 	FRAME_HEIGHT = 480,
-	TAB_HEIGHT = 32,
-	TAB_LABELS = {
-		"Tasks",
-		"Activity",
-		"Leaderboard",
-	},
 	TASK_ROW_HEIGHT = 24,
 	TASK_POINTS_WIDTH = 80,
 	TASK_XP_WIDTH = 70,

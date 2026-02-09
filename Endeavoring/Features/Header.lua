@@ -15,7 +15,7 @@ function Header.Create(parent)
 	local header = CreateFrame("Frame", nil, parent)
 	header:SetPoint("TOPLEFT", 12, -32)
 	header:SetPoint("TOPRIGHT", -12, -32)
-	header:SetHeight(88)
+	header:SetHeight(100)
 
 	header.title = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	header.title:SetPoint("TOPLEFT", 6, -4)

@@ -7,64 +7,38 @@ local constants = ns.Constants
 
 local DebugPrint = ns.DebugPrint
 
-local function CreateTabContent(parent, label)
-	local content = CreateFrame("Frame", nil, parent)
-	content:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -152)
-	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
-
-	local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	text:SetPoint("TOPLEFT")
-	text:SetText(label .. " content coming soon.")
-
-	content:Hide()
-	return content
-end
-
-local function SetActiveTab(parent, tabIndex)
-	parent.activeTab = tabIndex
-	for index, tab in ipairs(parent.tabs) do
-		local isActive = index == tabIndex
-		tab:SetEnabled(not isActive)
-		if isActive then
-			parent.tabContents[index]:Show()
-		else
-			parent.tabContents[index]:Hide()
-		end
-	end
-end
-
-local function CreateTabs(parent)
-	-- TODO: Polish tab styling (better visual separation, active state highlighting)
+local function InitializeTabSystem(frame)
+	-- Apply TabSystemOwnerMixin to main frame
+	Mixin(frame, TabSystemOwnerMixin)
+	TabSystemOwnerMixin.OnLoad(frame)
 	
-	parent.tabs = {}
-	parent.tabContents = {}
-
-	for index, label in ipairs(constants.TAB_LABELS) do
-		local tab = CreateFrame("Button", nil, parent, "TabSystemTopButtonTemplate")
-		tab:SetText(label)
-		tab:SetSize(110, constants.TAB_HEIGHT)
-		tab:SetID(index)
-		tab:SetScript("OnClick", function(self)
-			SetActiveTab(parent, self:GetID())
-		end)
-
-		if index == 1 then
-			tab:SetPoint("BOTTOMLEFT", parent.header, "BOTTOMLEFT", -4, -2)
-		else
-			tab:SetPoint("LEFT", parent.tabs[index - 1], "RIGHT", 6, 0)
-		end
-
-		parent.tabs[index] = tab
-		if label == "Tasks" then
-			parent.tabContents[index] = ns.Tasks.CreateTab(parent)
-		elseif label == "Leaderboard" then
-			parent.tabContents[index] = ns.Leaderboard.CreateTab(parent)
-		else
-			parent.tabContents[index] = CreateTabContent(parent, label)
-		end
-	end
-
-	SetActiveTab(parent, 1)
+	-- Create TabSystem child frame programmatically
+	local tabSystem = CreateFrame("Frame", nil, frame, "HorizontalLayoutFrame")
+	Mixin(tabSystem, TabSystemMixin)
+	
+	-- Configure TabSystem properties BEFORE OnLoad (used during initialization)
+	tabSystem.minTabWidth = 100
+	tabSystem.maxTabWidth = 150
+	tabSystem.tabTemplate = "TabSystemTopButtonTemplate"
+	tabSystem.spacing = 1
+	tabSystem.tabSelectSound = SOUNDKIT.IG_CHARACTER_INFO_TAB
+	
+	-- Initialize TabSystem (creates frame pool with tabTemplate)
+	tabSystem:OnLoad()
+	
+	-- Position TabSystem below header (hanging off top)
+	tabSystem:SetPoint("BOTTOMLEFT", frame.header, "BOTTOMLEFT", 8, -2)
+	
+	-- Link TabSystem to frame
+	frame.TabSystem = tabSystem
+	frame:SetTabSystem(tabSystem)
+	
+	-- Register tabs with their content frames
+	frame.tasksTabID = frame:AddNamedTab("Tasks", ns.Tasks.CreateTab(frame))
+	frame.leaderboardTabID = frame:AddNamedTab("Leaderboard", ns.Leaderboard.CreateTab(frame))
+	
+	-- Set initial tab
+	frame:SetTab(frame.tasksTabID, false)
 end
 
 local function RefreshInitiativeUI()
@@ -90,7 +64,7 @@ local function CreateMainFrame()
 	frame.title:SetText("Endeavoring")
 
 	frame.header = ns.Header.Create(frame)
-	CreateTabs(frame)
+	InitializeTabSystem(frame)
 	frame:SetScript("OnShow", function()
 		ns.API.RequestInitiativeInfo()
 		RefreshInitiativeUI()

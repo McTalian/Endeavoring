@@ -4,6 +4,16 @@
 
 ## Recent Work 🎉
 
+**TabSystem Framework Migration (Feb 8)** ✅
+- **Refactored tab management**: Migrated from manual tab creation to Blizzard's TabSystemTemplate framework
+- **Core.lua rewrite**: Removed ~60 lines of manual logic, added InitializeTabSystem() using TabSystemOwnerMixin
+- **Framework integration**: Proper mixin application (TabSystemOwnerMixin + TabSystemMixin) with programmatic frame creation
+- **Content anchoring**: Updated Tasks.lua and Leaderboard.lua to anchor relative to TabSystem instead of hardcoded offsets
+- **Bug fix**: Corrected initialization order - properties must be set BEFORE OnLoad() to properly initialize frame pool
+- **UI Polish**: Tabs now hang below header with proper visual states, hover effects, and keyboard navigation
+- **Bootstrap cleanup**: Removed TAB_HEIGHT and TAB_LABELS constants (framework handles sizing/creation)
+- **In-game validation**: User confirmed tabs looking great with adjusted header height
+
 **Guard Clause Cleanup & Documentation Enhancement (Feb 7)** ✅
 - **Guard review**: Identified and removed 4 unnecessary guards hiding loading order issues
 - **Code cleanup**: Tasks.lua and Core.lua now fail fast on internal module issues
@@ -253,13 +263,14 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 
 **Status**: In Progress (Active Testing & Refactoring)
 
-**Completed** (Feb 7, 2026):
+**Completed** (Feb 7-8, 2026):
 - [x] Multi-account testing (2 accounts, 9 characters)
 - [x] Message size limit handling (chunking implemented)
 - [x] Restricted zone messaging (lockdown detection)
 - [x] Backward compatibility validation
 - [x] Gossip protocol verification
-- [x] **Major code refactoring** (see Phase 4.5 below)
+- [x] **Major code refactoring** (see Phase 4.5 & 4.6 below)
+- [x] TabSystem framework migration (see Phase 4.6 below)
 
 **In Progress**:
 - [ ] Large character list testing (15+ characters)
@@ -339,6 +350,69 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 - Final: 162 lines (AddonMessages.lua) + 878 lines (4 Sync modules)
 - Protocol handlers: 81% reduction in AddonMessages.lua
 - Documentation: All module headers updated to reflect new architecture
+
+### Phase 4.6: TabSystem Framework Migration ✅
+
+**Status**: Complete (Feb 8, 2026)
+
+**Problem**: Manual tab creation and state management led to verbose code (~60 lines), required manual layout positioning, and didn't provide proper Blizzard UI behavior (hover states, keyboard navigation, etc.).
+
+**Goals**:
+- [x] Migrate to Blizzard's TabSystemTemplate framework
+- [x] Use TabSystemOwnerMixin for automatic state management
+- [x] Apply TabSystemMixin with HorizontalLayoutFrame for automatic layout
+- [x] Position tabs below header (hanging off top) like Housing Dashboard
+- [x] Update content area anchoring to be relative to TabSystem
+
+**Completed Work**:
+
+1. **Core.lua - Complete Rewrite**
+   - **Removed**: `SetActiveTab()`, `CreateTabContent()`, `CreateTabs()` (~60 lines)
+   - **Added**: `InitializeTabSystem()` function
+     - Applies `TabSystemOwnerMixin` to main frame
+     - Creates TabSystem child frame programmatically (HorizontalLayoutFrame + TabSystemMixin)
+     - Configures properties: `minTabWidth`, `maxTabWidth`, `tabTemplate`, `spacing`, `tabSelectSound`
+     - Positions tabs below header: `SetPoint("BOTTOMLEFT", frame.header, "BOTTOMLEFT", 8, -2)`
+     - Uses `AddNamedTab()` to register tabs with content frames
+     - Sets initial tab with `SetTab()`
+
+2. **Bootstrap.lua - Cleanup**
+   - **Removed**: `TAB_HEIGHT` constant (framework handles sizing)
+   - **Removed**: `TAB_LABELS` array (tabs registered directly in code)
+
+3. **Tasks.lua - Anchor Update**
+   - **Changed**: Content anchoring from hardcoded `(12, -152)` to `TabSystem` relative `(4, -8)`
+   - Positions content below tabs instead of at fixed offset
+
+4. **Leaderboard.lua - Anchor Update**
+   - **Changed**: Same anchoring pattern as Tasks.lua
+   - Content now follows TabSystem position dynamically
+
+**Bug Fix** (Initialization Order):
+- **Issue**: `tabTemplate` property set AFTER `OnLoad()` caused nil mixin error
+- **Root Cause**: `OnLoad()` creates frame pool using `self.tabTemplate` - must be set beforehand
+- **Solution**: Reordered code to set all properties BEFORE calling `tabSystem:OnLoad()`
+
+**Technical Details**:
+- TabSystem uses `CreateFramePool("BUTTON", self, self.tabTemplate)` internally
+- Template must exist when pool is created, not after
+- Properties configured before initialization: template, widths, spacing, sound
+
+**Benefits**:
+- **Framework Integration**: Uses Blizzard's tested TabSystemTemplate
+- **Cleaner Code**: Removed ~60 lines of manual tab management
+- **Auto Layout**: HorizontalLayoutFrame handles tab spacing/positioning
+- **Better UX**: Proper hover states, active/inactive visuals, keyboard navigation
+- **Accessibility**: Inherits Blizzard's sound effects and accessibility features
+- **Maintainability**: Follows same pattern as Housing Dashboard
+
+**Testing**: ✅ Validated in-game, user adjusted header height, tabs looking great
+
+**Key Learnings**:
+- TabSystemMixin properties must be set BEFORE OnLoad()
+- Content frames anchor to `parent.TabSystem` (not `parent.tabSystem`)
+- TabSystemTopButtonTemplate designed for tabs hanging off top of frame
+- Framework handles all tab state management (no manual SetEnabled needed)
 
 ## Current Architecture
 
