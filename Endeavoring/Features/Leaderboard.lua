@@ -166,7 +166,6 @@ end
 --- @return Frame row The created row
 local function CreateLeaderboardRow(parent, index)
 	-- TODO: Add indicator icon for players using Endeavoring addon (show synced profiles)
-	-- TODO: Add tooltip showing which characters contributed (from entry.charNames)
 	-- TODO: Make rows sortable by clicking headers (Rank, Player, Total, Entries)
 	
 	local constants = ns.Constants
@@ -174,6 +173,9 @@ local function CreateLeaderboardRow(parent, index)
 	row:SetHeight(constants.LEADERBOARD_ROW_HEIGHT)
 	row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * constants.LEADERBOARD_ROW_HEIGHT))
 	row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * constants.LEADERBOARD_ROW_HEIGHT))
+	
+	-- Enable mouse events for tooltips
+	row:EnableMouse(true)
 
 	-- Rank number
 	row.rank = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -200,6 +202,28 @@ local function CreateLeaderboardRow(parent, index)
 
 	-- Connect name width
 	row.name:SetPoint("RIGHT", row.total, "LEFT", -8, 0)
+	
+	-- Tooltip handlers
+	row:SetScript("OnEnter", function(self)
+		if not self.data or not self.data.charNames or #self.data.charNames == 0 then
+			return
+		end
+		
+		GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+		GameTooltip:SetText(self.data.displayName, 1, 1, 1, 1, true)
+		GameTooltip:AddLine(" ")
+		GameTooltip:AddLine("Contributing Characters:", 0.5, 0.5, 0.5)
+		
+		for _, charName in ipairs(self.data.charNames) do
+			GameTooltip:AddLine(charName, 1, 0.82, 0)
+		end
+		
+		GameTooltip:Show()
+	end)
+	
+	row:SetScript("OnLeave", function(self)
+		GameTooltip:Hide()
+	end)
 
 	return row
 end
