@@ -99,6 +99,7 @@ function Leaderboard.BuildEnriched(activityLog, timeRange)
 				entries = 0,
 				charNames = {},
 				isLocalPlayer = (battleTag == myBattleTag),
+				hasSyncedProfile = true,
 			}
 			battleTagLeaderboard[battleTag].total = battleTagLeaderboard[battleTag].total + entry.total
 			battleTagLeaderboard[battleTag].entries = battleTagLeaderboard[battleTag].entries + entry.entries
@@ -110,6 +111,7 @@ function Leaderboard.BuildEnriched(activityLog, timeRange)
 				entries = entry.entries,
 				charNames = {},
 				isLocalPlayer = (entry.player == UnitName("player")),
+				hasSyncedProfile = false,
 			})
 		end
 	end
@@ -165,7 +167,6 @@ end
 --- @param index number The row index
 --- @return Frame row The created row
 local function CreateLeaderboardRow(parent, index)
-	-- TODO: Add indicator icon for players using Endeavoring addon (show synced profiles)
 	-- TODO: Make rows sortable by clicking headers (Rank, Player, Total, Entries)
 	
 	local constants = ns.Constants
@@ -188,6 +189,13 @@ local function CreateLeaderboardRow(parent, index)
 	row.name:SetPoint("LEFT", row.rank, "RIGHT", 8, 0)
 	row.name:SetJustifyH("LEFT")
 
+	-- Addon indicator icon (shows if player is using Endeavoring)
+	row.addonIcon = row:CreateTexture(nil, "OVERLAY")
+	row.addonIcon:SetSize(16, 16)
+	row.addonIcon:SetPoint("RIGHT", row.name, "LEFT", -4, 0)
+	row.addonIcon:SetTexture("Interface/AddOns/Endeavoring/Icons/endeavoring.png")
+	row.addonIcon:Hide() -- Hidden by default, shown for synced profiles
+
 	-- Total contribution
 	row.total = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.total:SetWidth(constants.LEADERBOARD_TOTAL_WIDTH)
@@ -209,8 +217,9 @@ local function CreateLeaderboardRow(parent, index)
 			return
 		end
 		
-		GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+		GameTooltip:SetOwner(self, "ANCHOR_CURSOR_RIGHT", 4, 0)
 		GameTooltip:SetText(self.data.displayName, 1, 1, 1, 1, true)
+		GameTooltip:AddLine("<Endeavoring User>", 86/255, 130/255, 3/255)
 		GameTooltip:AddLine(" ")
 		GameTooltip:AddLine("Contributing Characters:", 0.5, 0.5, 0.5)
 		
@@ -315,6 +324,13 @@ local function UpdateLeaderboardDisplay()
 		row.name:SetText(entry.displayName or "Unknown")
 		row.total:SetText(string.format("%.3f", entry.total or 0))
 		row.entries:SetText(tostring(entry.entries or 0))
+		
+		-- Show addon icon for synced profiles
+		if entry.hasSyncedProfile then
+			row.addonIcon:Show()
+		else
+			row.addonIcon:Hide()
+		end
 
 		-- Highlight local player
 		if entry.isLocalPlayer then
