@@ -1,8 +1,19 @@
 # Development Status
 
-**Last Updated**: February 7, 2026
+**Last Updated**: February 9, 2026
 
 ## Recent Work 🎉
+
+**Data Loading & UI Polish (Feb 9)** ✅
+- **Fixed data initialization**: Added PLAYER_HOUSE_LIST_UPDATED event and proper init sequence via C_Housing.GetPlayerOwnedHouses()
+- **Removed over-optimization**: Stripped throttling/debouncing from API requests to follow Blizzard's simpler event-driven pattern
+- **Activity log loading**: Added isLoaded check, now loads reliably on login without requiring Housing Dashboard
+- **Leaderboard icons**: Added addon indicator icon (endeavoring.png) for players using Endeavoring - shows for synced profiles
+- **Task row redesign**: Complete table layout overhaul with Task | Contribution | House XP | Coupons columns
+- **Coupons integration**: Implemented GetCouponsInfo() using C_QuestLog.GetQuestRewardCurrencyInfo() for reward display
+- **Vertical centering**: Added task container frame for proper MIDDLE justification when no description exists
+- **Manual polish**: User completed tedious anchoring refinements for pixel-perfect alignment
+- **File cleanup**: Removed HousingDashboardHouseInfo.lua (no longer needed after simplification)
 
 **TabSystem Framework Migration (Feb 8)** ✅
 - **Refactored tab management**: Migrated from manual tab creation to Blizzard's TabSystemTemplate framework
@@ -249,14 +260,14 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 - Scrollable content area with proper alignment
 - Empty state handling
 
-**Testing Status**: ✅ Validated in-game with 10 players, multiple alts
+**Testing Status**: ✅ Validated in-game with 2 players, multiple alts
 
 **Future Enhancements** (documented as TODOs):
-- Addon indicator icon for synced players
-- Tooltips showing which characters contributed
+- ✅ **Addon indicator icon for synced players** (Feb 9, 2026)
+- Tooltips showing which characters contributed (foundation in place with charNames array)
 - Column sorting (click headers to sort)
-- Task row improvements (richer display, icons, row separators)
-- Tab styling polish and repositioning (deferred to /refactor workflow)
+- ✅ **Task row improvements** (Feb 9, 2026) - Complete table redesign with icons, separators, coupons column
+- ✅ **Tab styling polish and repositioning** (Feb 8, 2026) - Migrated to Blizzard's TabSystemTemplate for better visuals and automatic layout
 - Header enhancements (colored progress bar, milestone markers, tooltip for endeavor description)
 
 ### Phase 4: Testing & Polish + Code Quality 🔬
