@@ -359,8 +359,8 @@ end
 --- @return Frame content The leaderboard tab content
 function Leaderboard.CreateTab(parent)
 	local constants = ns.Constants
-	local content = CreateFrame("Frame", nil, parent)
-	content:SetPoint("TOPLEFT", parent.TabSystem, "BOTTOMLEFT", 4, -8)
+	local content = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+	content:SetPoint("TOPLEFT", parent.TabSystem, "BOTTOMLEFT", -2, 0)
 	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
 
 	-- Time range filter buttons

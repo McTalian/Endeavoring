@@ -43,7 +43,8 @@ local function TryAddButton()
 		and initiativesFrame.InitiativeSetFrame
 		and initiativesFrame.InitiativeSetFrame.InitiativeTimer
 	local buttonParent = initiativesFrame or parent
-	local button = CreateFrame("Button", nil, buttonParent, "UIPanelButtonTemplate")
+	local button = CreateFrame("Button", "EndeavoringButton", buttonParent, "UIPanelButtonTemplate")
+	button:SetFrameLevel(200)
 	button:SetSize(140, 22)
 	button:SetText("Endeavoring")
 	button:SetScript("OnClick", function()

@@ -49,7 +49,9 @@ end
 local function CreateMainFrame()
 	-- TODO: Use PortraitFrameTemplate
 
-	local frame = CreateFrame("Frame", "EndeavoringFrame", UIParent, "BasicFrameTemplateWithInset")
+	local frame = CreateFrame("Frame", "EndeavoringFrame", UIParent, "PortraitFrameTemplate")
+	frame.TitleContainer.TitleText:SetText("Endeavoring")
+	frame:SetPortraitToAsset("Interface/AddOns/Endeavoring/Icons/endeavoring_panel_portrait.png")
 	frame:SetSize(constants.FRAME_WIDTH, constants.FRAME_HEIGHT)
 	frame:SetPoint("CENTER")
 	frame:SetMovable(true)
@@ -60,9 +62,9 @@ local function CreateMainFrame()
 	frame:SetFrameStrata("DIALOG")
 	frame:SetClampedToScreen(true)
 
-	frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	frame.title:SetPoint("CENTER", frame.TitleBg, "CENTER", 8, 0)
-	frame.title:SetText("Endeavoring")
+	-- frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	-- frame.title:SetPoint("CENTER", frame.TitleBg, "CENTER", 8, 0)
+	-- frame.title:SetText("Endeavoring")
 
 	frame.header = ns.Header.Create(frame)
 	InitializeTabSystem(frame)
@@ -121,9 +123,9 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		end
 		
 		ns.Commands.Register()
-		local integration = ns.Integrations.HousingDashboard
-		if integration.EnsureLoaded() then
-			integration.RegisterButtonHook()
+		local housingDash = ns.Integrations.HousingDashboard
+		if housingDash.EnsureLoaded() then
+			housingDash.RegisterButtonHook()
 		end
 		
 		-- Request housing data first (required for initiative system)
@@ -134,10 +136,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 	end
 
 	if event == "ADDON_LOADED" then
-		local integration = ns.Integrations.HousingDashboard
+		local housingDash = ns.Integrations.HousingDashboard
 		local addonNameLoaded = ...
-		if addonNameLoaded == integration.GetAddonName() and integration.EnsureLoaded() then
-			integration.RegisterButtonHook()
+		if addonNameLoaded == housingDash.GetAddonName() and housingDash.EnsureLoaded() then
+			housingDash.RegisterButtonHook()
 		end
 		return
 	end

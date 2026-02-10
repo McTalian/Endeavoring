@@ -9,9 +9,9 @@ ns.Header = Header
 function Header.Create(parent)
 	local constants = ns.Constants
 	local header = CreateFrame("Frame", nil, parent)
-	header:SetPoint("TOPLEFT", 12, -32)
-	header:SetPoint("TOPRIGHT", -12, -32)
-	header:SetHeight(100)
+	header:SetPoint("TOPLEFT", 12, -58)
+	header:SetPoint("TOPRIGHT", -12, -58)
+	header:SetHeight(constants.HEADER_HEIGHT)
 
 	-- Title with description tooltip support
 	header.title = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")

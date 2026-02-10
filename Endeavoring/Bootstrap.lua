@@ -5,7 +5,8 @@ local ns = select(2, ...)
 
 ns.Constants = ns.Constants or {
 	FRAME_WIDTH = 640,
-	FRAME_HEIGHT = 480,
+	FRAME_HEIGHT = 520,
+	HEADER_HEIGHT = 100,
 	TASK_ROW_HEIGHT = 60,
 	TASK_TASK_WIDTH = 280,
 	TASK_CONTRIBUTION_WIDTH = 100,
