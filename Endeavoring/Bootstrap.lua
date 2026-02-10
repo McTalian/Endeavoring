@@ -22,6 +22,8 @@ ns.Constants = ns.Constants or {
 	NO_LEADERBOARD_DATA = "No activity recorded",
 	TASKS_SORT_NAME = "name",
 	TASKS_SORT_POINTS = "points",
+	TASKS_SORT_XP = "xp",
+	TASKS_SORT_COUPONS = "coupons",
 	-- Message prefixes
 	PREFIX_INFO = "|cff00ff00Endeavoring:|r",
 	PREFIX_ERROR = "|cffff0000Endeavoring:|r",

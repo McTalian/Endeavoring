@@ -31,6 +31,42 @@ local function BuildSortedTasks(initiativeInfo)
 				return left < right
 			end
 			return left > right
+		elseif sortKey == ns.Constants.TASKS_SORT_XP then
+			local leftXP = ns.API.GetQuestRewardHouseXp(a.rewardQuestID) or 0
+			local rightXP = ns.API.GetQuestRewardHouseXp(b.rewardQuestID) or 0
+			if leftXP == rightXP then
+				local leftName = a.taskName or ""
+				local rightName = b.taskName or ""
+				return leftName < rightName
+			end
+			if sortAsc then
+				return leftXP < rightXP
+			end
+			return leftXP > rightXP
+		elseif sortKey == ns.Constants.TASKS_SORT_COUPONS then
+			local leftCoupons = 0
+			local rightCoupons = 0
+			if a.rewardQuestID and a.rewardQuestID ~= 0 then
+				local currencyInfo = C_QuestLog.GetQuestRewardCurrencyInfo(a.rewardQuestID, 1, false)
+				if currencyInfo then
+					leftCoupons = currencyInfo.totalRewardAmount or 0
+				end
+			end
+			if b.rewardQuestID and b.rewardQuestID ~= 0 then
+				local currencyInfo = C_QuestLog.GetQuestRewardCurrencyInfo(b.rewardQuestID, 1, false)
+				if currencyInfo then
+					rightCoupons = currencyInfo.totalRewardAmount or 0
+				end
+			end
+			if leftCoupons == rightCoupons then
+				local leftName = a.taskName or ""
+				local rightName = b.taskName or ""
+				return leftName < rightName
+			end
+			if sortAsc then
+				return leftCoupons < rightCoupons
+			end
+			return leftCoupons > rightCoupons
 		end
 
 		local leftPoints = a.progressContributionAmount or 0
@@ -57,6 +93,8 @@ local function UpdateSortHeader()
 
 	local nameSuffix = ""
 	local pointsSuffix = ""
+	local xpSuffix = ""
+	local couponsSuffix = ""
 	local asc = CreateAtlasMarkup("editmode-up-arrow", 16, 11, 1, 4)
 	local desc = CreateAtlasMarkup("editmode-down-arrow", 16, 11, 1, -4)
 	local state = ns.state or {}
@@ -64,10 +102,16 @@ local function UpdateSortHeader()
 		nameSuffix = state.tasksSortAsc and asc or desc
 	elseif state.tasksSortKey == ns.Constants.TASKS_SORT_POINTS then
 		pointsSuffix = state.tasksSortAsc and asc or desc
+	elseif state.tasksSortKey == ns.Constants.TASKS_SORT_XP then
+		xpSuffix = state.tasksSortAsc and asc or desc
+	elseif state.tasksSortKey == ns.Constants.TASKS_SORT_COUPONS then
+		couponsSuffix = state.tasksSortAsc and asc or desc
 	end
 
 	ns.ui.tasksUI.nameHeader:SetText("Task" .. nameSuffix)
 	ns.ui.tasksUI.contributionHeader:SetText("Contribution" .. pointsSuffix)
+	ns.ui.tasksUI.xpHeader:SetText("House XP" .. xpSuffix)
+	ns.ui.tasksUI.couponsHeader:SetText("Coupons" .. couponsSuffix)
 end
 
 local function SetSort(sortKey)
@@ -226,7 +270,6 @@ local function CenterTaskText(row, hasDescription)
 	if hasDescription then
 		-- Two-line layout: start at top of container
 		local descHeight = row.description:GetHeight() or 0
-		print("Description height:", descHeight)
 		row.name:ClearAllPoints()
 		row.name:SetPoint("LEFT", row.taskContainer, "LEFT", 0, descHeight / 2)
 		row.name:SetPoint("RIGHT", row.taskContainer, "RIGHT", 0, descHeight / 2)
@@ -381,17 +424,27 @@ function Tasks.CreateTab(parent)
 	contributionHeader.text:SetJustifyH("CENTER")
 	contributionHeader.text:SetText("Contribution")
 
-	local xpHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local xpHeader = CreateFrame("Button", nil, header)
 	xpHeader:SetPoint("LEFT", contributionHeader, "RIGHT", 0, 0)
-	xpHeader:SetWidth(constants.TASK_XP_WIDTH)
-	xpHeader:SetJustifyH("CENTER")
-	xpHeader:SetText("House XP")
+	xpHeader:SetSize(constants.TASK_XP_WIDTH, 18)
+	xpHeader:SetScript("OnClick", function()
+		SetSort(constants.TASKS_SORT_XP)
+	end)
+	xpHeader.text = xpHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	xpHeader.text:SetPoint("CENTER")
+	xpHeader.text:SetJustifyH("CENTER")
+	xpHeader.text:SetText("House XP")
 	
-	local couponsHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local couponsHeader = CreateFrame("Button", nil, header)
 	couponsHeader:SetPoint("LEFT", xpHeader, "RIGHT", 0, 0)
-	couponsHeader:SetWidth(constants.TASK_COUPONS_WIDTH - scrollbarOffset)
-	couponsHeader:SetJustifyH("CENTER")
-	couponsHeader:SetText("Coupons")
+	couponsHeader:SetSize(constants.TASK_COUPONS_WIDTH - scrollbarOffset, 18)
+	couponsHeader:SetScript("OnClick", function()
+		SetSort(constants.TASKS_SORT_COUPONS)
+	end)
+	couponsHeader.text = couponsHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	couponsHeader.text:SetPoint("CENTER")
+	couponsHeader.text:SetJustifyH("CENTER")
+	couponsHeader.text:SetText("Coupons")
 
 	local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -6)
@@ -415,8 +468,8 @@ function Tasks.CreateTab(parent)
 	content.header = header
 	content.nameHeader = nameHeader.text
 	content.contributionHeader = contributionHeader.text
-	content.xpHeader = xpHeader
-	content.couponsHeader = couponsHeader
+	content.xpHeader = xpHeader.text
+	content.couponsHeader = couponsHeader.text
 	content.scrollFrame = scrollFrame
 	content.scrollChild = scrollChild
 	content.emptyText = emptyText
