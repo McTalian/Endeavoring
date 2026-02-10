@@ -14,6 +14,7 @@ ns.Constants = ns.Constants or {
 	LEADERBOARD_ENTRIES_WIDTH = 70,
 	SCROLLBAR_WIDTH = 20,
 	NO_ACTIVE_ENDEAVOR = "No active endeavor",
+	NO_TASK_DATA = "No task data, try opening the housing dashboard",
 	TIME_REMAINING_FALLBACK = "Time Remaining: --",
 	NO_TASKS_AVAILABLE = "No tasks available",
 	NO_LEADERBOARD_DATA = "No activity recorded",

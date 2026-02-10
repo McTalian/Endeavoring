@@ -45,11 +45,21 @@ function Header.Refresh()
 		return
 	end
 
+	local isInitiativeActive = ns.API.IsInitiativeActive()
+	if not isInitiativeActive then
+		mainFrame.header.title:SetText(constants.NO_ACTIVE_ENDEAVOR)
+		mainFrame.header.timeRemaining:SetText(constants.TIME_REMAINING_FALLBACK)
+		mainFrame.header.progress:SetMinMaxValues(0, 100)
+		mainFrame.header.progress:SetValue(0)
+		mainFrame.header.progress.text:SetText("0%")
+		return
+	end
+
 	local header = mainFrame.header
 	local initiativeInfo = ns.API.GetInitiativeInfo()
 
 	if initiativeInfo and initiativeInfo.isLoaded and initiativeInfo.initiativeID ~= 0 then
-		header.title:SetText(initiativeInfo.title or "Endeavoring")
+		header.title:SetText(initiativeInfo.title or "???")
 		header.timeRemaining:SetText(ns.API.FormatTimeRemaining(initiativeInfo.duration))
 
 		local maxProgress = initiativeInfo.progressRequired or 0
@@ -62,7 +72,7 @@ function Header.Refresh()
 		local percent = math.min((currentProgress / maxProgress), 1)
 		header.progress.text:SetText(FormatPercentage(percent))
 	else
-		header.title:SetText(constants.NO_ACTIVE_ENDEAVOR)
+		header.title:SetText(constants.NO_TASK_DATA)
 		header.timeRemaining:SetText(constants.TIME_REMAINING_FALLBACK)
 		header.progress:SetMinMaxValues(0, 100)
 		header.progress:SetValue(0)

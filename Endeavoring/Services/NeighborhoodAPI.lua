@@ -16,7 +16,13 @@ function API.GetInitiativeInfo()
 	return nil
 end
 
-local RequestInitiativeInfoThrottled = false
+function API.IsInitiativeActive()
+	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.IsInitiativeEnabled then
+		return C_NeighborhoodInitiative.IsInitiativeEnabled()
+	end
+
+	return false
+end
 
 function API.RequestInitiativeInfo()
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo then
