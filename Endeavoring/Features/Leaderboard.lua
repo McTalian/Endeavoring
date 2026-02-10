@@ -266,7 +266,17 @@ local function UpdateLeaderboardDisplay()
 	local constants = ns.Constants
 	local activityLog = ns.API.GetActivityLogInfo()
 
-	if not activityLog or not activityLog.taskActivity or #activityLog.taskActivity == 0 then
+	-- Check if activity log is loaded (follows Blizzard's pattern)
+	if not activityLog or not activityLog.isLoaded then
+		leaderboardUI.emptyText:SetText("Loading activity data...")
+		leaderboardUI.emptyText:Show()
+		for _, row in ipairs(leaderboardUI.rows) do
+			row:Hide()
+		end
+		return
+	end
+
+	if not activityLog.taskActivity or #activityLog.taskActivity == 0 then
 		leaderboardUI.emptyText:SetText(constants.NO_LEADERBOARD_DATA)
 		leaderboardUI.emptyText:Show()
 		for _, row in ipairs(leaderboardUI.rows) do
@@ -422,20 +432,10 @@ function Leaderboard.CreateTab(parent)
 	emptyText:Hide()
 
 	-- Register event handler for activity log updates
-	local pendingUpdateTimer
 	content:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
 	content:SetScript("OnEvent", function(self, event)
 		if event == "INITIATIVE_ACTIVITY_LOG_UPDATED" then
-			-- Cancel pending update if one exists
-			if pendingUpdateTimer then
-				pendingUpdateTimer:Cancel()
-			end
-			-- Schedule new update (will be cancelled if another event fires)
-			pendingUpdateTimer = C_Timer.NewTimer(0.1, function()
-				DebugPrint("Debounce timer fired, updating leaderboard display")
-				UpdateLeaderboardDisplay()
-				pendingUpdateTimer = nil
-			end)
+			UpdateLeaderboardDisplay()
 		end
 	end)
 

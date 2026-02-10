@@ -72,19 +72,9 @@ function API.GetActivityLogInfo()
 	return nil
 end
 
-local RequestActivityLogThrottled = false
-
 function API.RequestActivityLog()
-	if RequestActivityLogThrottled then
-		DebugPrint("RequestActivityLog is currently throttled, skipping request to prevent spamming")
-		return
-	end
-	RequestActivityLogThrottled = true
-	C_Timer.After(10, function()
-		RequestActivityLogThrottled = false
-	end)
+	-- Follow Blizzard's pattern: no throttling, just request and trust the event system
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestInitiativeActivityLog then
 		C_NeighborhoodInitiative.RequestInitiativeActivityLog()
-		ns.Integrations.HousingDashboardHouseContent.TryForceActivityLoad()
 	end
 end
