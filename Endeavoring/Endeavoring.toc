@@ -19,6 +19,7 @@ Bootstrap.lua
 Services/PlayerInfo.lua
 Services/MessageCodec.lua
 Services/NeighborhoodAPI.lua
+Services/QuestRewards.lua
 Services/AddonMessages.lua
 Data/Database.lua
 Sync/CharacterCache.lua

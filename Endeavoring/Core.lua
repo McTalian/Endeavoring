@@ -129,9 +129,7 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		end
 		
 		-- Request housing data first (required for initiative system)
-		if C_Housing and C_Housing.GetPlayerOwnedHouses then
-			C_Housing.GetPlayerOwnedHouses()
-		end
+		ns.API.RequestPlayerHouses()
 		return
 	end
 

@@ -110,7 +110,7 @@ function Leaderboard.BuildEnriched(activityLog, timeRange)
 				total = entry.total,
 				entries = entry.entries,
 				charNames = {},
-				isLocalPlayer = (entry.player == UnitName("player")),
+				isLocalPlayer = ns.PlayerInfo.IsLocalPlayer(entry.player),
 				hasSyncedProfile = false,
 			})
 		end

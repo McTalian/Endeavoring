@@ -19,6 +19,19 @@ function PlayerInfo.GetCharacterName()
   return PlayerInfo.GetCharacterInfo().name
 end
 
+--- Get the current player's name (simple wrapper for UnitName)
+--- @return string playerName The player's name
+function PlayerInfo.GetPlayerName()
+	return UnitName("player")
+end
+
+--- Check if a player name matches the current player
+--- @param playerName string The player name to check
+--- @return boolean isLocalPlayer True if the name matches the current player
+function PlayerInfo.IsLocalPlayer(playerName)
+	return playerName == UnitName("player")
+end
+
 --- Get character info for the current player
 --- @return table characterInfo Character information table with name and realm
 function PlayerInfo.GetCharacterInfo()

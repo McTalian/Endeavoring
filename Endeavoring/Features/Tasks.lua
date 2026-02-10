@@ -32,8 +32,8 @@ local function BuildSortedTasks(initiativeInfo)
 			end
 			return left > right
 		elseif sortKey == ns.Constants.TASKS_SORT_XP then
-			local leftXP = ns.API.GetQuestRewardHouseXp(a.rewardQuestID) or 0
-			local rightXP = ns.API.GetQuestRewardHouseXp(b.rewardQuestID) or 0
+			local leftXP = ns.QuestRewards.GetHouseXP(a.rewardQuestID) or 0
+			local rightXP = ns.QuestRewards.GetHouseXP(b.rewardQuestID) or 0
 			if leftXP == rightXP then
 				local leftName = a.taskName or ""
 				local rightName = b.taskName or ""
@@ -44,20 +44,8 @@ local function BuildSortedTasks(initiativeInfo)
 			end
 			return leftXP > rightXP
 		elseif sortKey == ns.Constants.TASKS_SORT_COUPONS then
-			local leftCoupons = 0
-			local rightCoupons = 0
-			if a.rewardQuestID and a.rewardQuestID ~= 0 then
-				local currencyInfo = C_QuestLog.GetQuestRewardCurrencyInfo(a.rewardQuestID, 1, false)
-				if currencyInfo then
-					leftCoupons = currencyInfo.totalRewardAmount or 0
-				end
-			end
-			if b.rewardQuestID and b.rewardQuestID ~= 0 then
-				local currencyInfo = C_QuestLog.GetQuestRewardCurrencyInfo(b.rewardQuestID, 1, false)
-				if currencyInfo then
-					rightCoupons = currencyInfo.totalRewardAmount or 0
-				end
-			end
+			local leftCoupons = ns.QuestRewards.GetCouponAmount(a.rewardQuestID)
+			local rightCoupons = ns.QuestRewards.GetCouponAmount(b.rewardQuestID)
 			if leftCoupons == rightCoupons then
 				local leftName = a.taskName or ""
 				local rightName = b.taskName or ""
@@ -252,7 +240,7 @@ local function GetCouponsInfo(rewardQuestID)
 		return "--", nil
 	end
 	
-	local currencyInfo = C_QuestLog.GetQuestRewardCurrencyInfo(rewardQuestID, 1, false)
+	local currencyInfo = ns.QuestRewards.GetCurrencyReward(rewardQuestID, 1)
 	if currencyInfo then
 		return tostring(currencyInfo.totalRewardAmount or 0), currencyInfo.texture
 	end
@@ -261,7 +249,7 @@ local function GetCouponsInfo(rewardQuestID)
 end
 
 local function GetHouseXPValue(rewardQuestID)
-	local rewardFavor = ns.API.GetQuestRewardHouseXp(rewardQuestID) or nil
+	local rewardFavor = ns.QuestRewards.GetHouseXP(rewardQuestID) or nil
 	return tostring(rewardFavor or "--")
 end
 

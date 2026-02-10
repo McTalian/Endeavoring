@@ -76,3 +76,10 @@ function API.RequestActivityLog()
 		C_NeighborhoodInitiative.RequestInitiativeActivityLog()
 	end
 end
+
+--- Request player's owned houses list (required to initialize housing system)
+function API.RequestPlayerHouses()
+	if C_Housing and C_Housing.GetPlayerOwnedHouses then
+		C_Housing.GetPlayerOwnedHouses()
+	end
+end

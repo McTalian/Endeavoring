@@ -129,7 +129,7 @@ local function HandleManifest(sender, data)
 	end
 	
 	-- Get cached profile to compare timestamps
-	local cachedProfile = EndeavoringDB.global.profiles[battleTag]
+	local cachedProfile = ns.DB.GetProfile(battleTag)
 	local needsChars = false
 	local afterTimestamp = 0
 	
