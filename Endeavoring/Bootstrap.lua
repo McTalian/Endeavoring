@@ -4,7 +4,7 @@ local addonName = select(1, ...)
 local ns = select(2, ...)
 
 ns.Constants = ns.Constants or {
-	FRAME_WIDTH = 620,
+	FRAME_WIDTH = 640,
 	FRAME_HEIGHT = 480,
 	TASK_ROW_HEIGHT = 60,
 	TASK_TASK_WIDTH = 280,
