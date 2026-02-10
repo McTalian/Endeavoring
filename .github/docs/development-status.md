@@ -4,7 +4,18 @@
 
 ## Recent Work 🎉
 
-**Data Loading & UI Polish (Feb 9)** ✅
+**Header Enhancements & Sortable Columns (Feb 9 - Late)** ✅
+- **Sortable columns**: Added House XP and Coupons column sorting to Tasks tab
+- **Colored progress bar**: Green gradient progress bar (similar to experience bar) for better visual clarity
+- **Milestone display**: Clean single-column list on header right side with overflow support for 5+ milestones
+- **Info icon**: Added endeavor description tooltip (poi-workorders icon) next to title
+- **Milestone tooltips**: Hover over milestones to see required progress and reward details
+- **Visual polish**: Green checkmarks for completed milestones, gray for incomplete
+- **Sort constants**: Added TASKS_SORT_XP and TASKS_SORT_COUPONS to Bootstrap.lua
+- **UX iteration**: Refined milestone layout through user feedback - settled on single column with overflow
+- **In-game validation**: User tested and confirmed good UX for alpha release
+
+**Data Loading & UI Polish (Feb 9 - Early)** ✅
 - **Fixed data initialization**: Added PLAYER_HOUSE_LIST_UPDATED event and proper init sequence via C_Housing.GetPlayerOwnedHouses()
 - **Removed over-optimization**: Stripped throttling/debouncing from API requests to follow Blizzard's simpler event-driven pattern
 - **Activity log loading**: Added isLoaded check, now loads reliably on login without requiring Housing Dashboard
@@ -262,13 +273,18 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 
 **Testing Status**: ✅ Validated in-game with 2 players, multiple alts
 
-**Future Enhancements** (documented as TODOs):
-- ✅ **Addon indicator icon for synced players** (Feb 9, 2026)
-- Tooltips showing which characters contributed (foundation in place with charNames array)
-- Column sorting (click headers to sort)
-- ✅ **Task row improvements** (Feb 9, 2026) - Complete table redesign with icons, separators, coupons column
-- ✅ **Tab styling polish and repositioning** (Feb 8, 2026) - Migrated to Blizzard's TabSystemTemplate for better visuals and automatic layout
-- Header enhancements (colored progress bar, milestone markers, tooltip for endeavor description)
+**Completed Enhancements**:
+- ✅ **Addon indicator icon for synced players** (Feb 9, 2026 - Early)
+- ✅ **Leaderboard character tooltips** (Feb 9, 2026 - Early) - Hover over player to see contributing character names
+- ✅ **Column sorting** (Feb 9, 2026 - Late) - House XP and Coupons columns now sortable on Tasks tab
+- ✅ **Task row improvements** (Feb 9, 2026 - Early) - Complete table redesign with icons, separators, coupons column
+- ✅ **Tab styling polish** (Feb 8, 2026) - Migrated to Blizzard's TabSystemTemplate for better visuals
+- ✅ **Header enhancements** (Feb 9, 2026 - Late) - Colored progress bar, milestone list with tooltips, endeavor description icon
+
+**Remaining Enhancements** (documented as TODOs):
+- [ ] **Leaderboard column sorting** ([Leaderboard.lua#L170](../../Endeavoring/Features/Leaderboard.lua#L170)) - Make Rank, Player, Total, and Entries columns sortable by clicking headers
+- [ ] Additional time ranges ("This Month", custom date selector)
+- [ ] Activity/History tab (separate from leaderboard, shows raw activity log entries)
 
 ### Phase 4: Testing & Polish + Code Quality 🔬
 
