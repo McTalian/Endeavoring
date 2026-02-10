@@ -44,7 +44,6 @@ end
 local function RefreshInitiativeUI()
 	ns.Header.Refresh()
 	ns.Tasks.Refresh()
-	ns.Leaderboard.Refresh()
 end
 
 local function CreateMainFrame()
@@ -67,6 +66,7 @@ local function CreateMainFrame()
 	InitializeTabSystem(frame)
 	frame:SetScript("OnShow", function()
 		ns.API.RequestInitiativeInfo()
+		ns.API.RequestActivityLog()
 		RefreshInitiativeUI()
 	end)
 
@@ -93,6 +93,8 @@ ns.RefreshInitiativeUI = RefreshInitiativeUI
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:RegisterEvent("PLAYER_HOUSE_LIST_UPDATED")
+eventFrame:RegisterEvent("NEIGHBORHOOD_INITIATIVE_UPDATED")
 eventFrame:RegisterEvent("INITIATIVE_COMPLETED")
 eventFrame:RegisterEvent("INITIATIVE_TASK_COMPLETED")
 eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
@@ -121,6 +123,11 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		if integration.EnsureLoaded() then
 			integration.RegisterButtonHook()
 		end
+		
+		-- Request housing data first (required for initiative system)
+		if C_Housing and C_Housing.GetPlayerOwnedHouses then
+			C_Housing.GetPlayerOwnedHouses()
+		end
 		return
 	end
 
@@ -130,6 +137,18 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		if addonNameLoaded == integration.GetAddonName() and integration.EnsureLoaded() then
 			integration.RegisterButtonHook()
 		end
+		return
+	end
+
+	if event == "PLAYER_HOUSE_LIST_UPDATED" then
+		-- House list loaded, now request initiative info
+		ns.API.RequestInitiativeInfo()
+		return
+	end
+
+	if event == "NEIGHBORHOOD_INITIATIVE_UPDATED" then
+		-- Initiative data has loaded/updated, refresh UI
+		RefreshInitiativeUI()
 		return
 	end
 

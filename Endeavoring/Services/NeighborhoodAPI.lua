@@ -19,14 +19,6 @@ end
 local RequestInitiativeInfoThrottled = false
 
 function API.RequestInitiativeInfo()
-	if RequestInitiativeInfoThrottled then
-		DebugPrint("RequestInitiativeInfo is currently throttled, skipping request to prevent spamming")
-		return
-	end
-	RequestInitiativeInfoThrottled = true
-	C_Timer.After(10, function()
-		RequestInitiativeInfoThrottled = false
-	end)
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo then
 		C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo()
 	end

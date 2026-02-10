@@ -252,8 +252,8 @@ end
 --- @param range number One of TIME_RANGE constants
 local function SetTimeRangeFilter(range)
 	Leaderboard.SetTimeRange(range)
+	ns.API.RequestActivityLog() -- Trigger refresh with new time range
 	UpdateFilterButtons()
-	Leaderboard.Refresh()
 end
 
 --- Internal function to update leaderboard display with current data
@@ -336,12 +336,6 @@ local function UpdateLeaderboardDisplay()
 	for index = #leaderboard + 1, #leaderboardUI.rows do
 		leaderboardUI.rows[index]:Hide()
 	end
-end
-
---- Refresh the leaderboard UI (requests fresh data)
-function Leaderboard.Refresh()
-	ns.API.RequestActivityLog()
-	-- Event handler will update display when data arrives
 end
 
 --- Create the leaderboard tab UI
