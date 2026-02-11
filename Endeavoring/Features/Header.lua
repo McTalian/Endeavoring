@@ -43,14 +43,16 @@ function Header.Create(parent)
 
 	-- Progress bar with gradient color
 	header.progress = CreateFrame("StatusBar", nil, header, "TextStatusBar")
+	--header.progress:SetPoint("BOTTOM", header, "TOP", 0, 4)
 	header.progress:SetPoint("TOPLEFT", header.timeRemaining, "BOTTOMLEFT", 0, -8)
-	header.progress:SetSize(320, 18)
+	
+	header.progress:SetSize(constants.HEADER_PROGRESS_WIDTH, constants.HEADER_PROGRESS_HEIGHT)
 	header.progress:SetMinMaxValues(0, 100)
 	header.progress:SetValue(0)
 	
 	-- Use smooth gradient texture
 	local progressTexture = header.progress:CreateTexture(nil, "ARTWORK")
-	progressTexture:SetTexture("Interface/TargetingFrame/UI-StatusBar")
+	progressTexture:SetAtlas("housing-dashboard-fillbar-fill")
 	header.progress:SetStatusBarTexture(progressTexture)
 	
 	-- Green gradient (similar to experience bar)
@@ -59,7 +61,7 @@ function Header.Create(parent)
 	-- Background texture
 	header.progress.bg = header.progress:CreateTexture(nil, "BACKGROUND")
 	header.progress.bg:SetAllPoints(header.progress)
-	header.progress.bg:SetTexture("Interface/TargetingFrame/UI-StatusBar")
+	header.progress.bg:SetAtlas("housing-dashboard-fillbar-bar-bg")
 	header.progress.bg:SetVertexColor(0.1, 0.1, 0.1, 0.5)
 	
 	-- Progress text

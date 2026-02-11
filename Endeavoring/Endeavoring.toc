@@ -29,6 +29,7 @@ Sync/Protocol.lua
 Features/Header.lua
 Features/Tasks.lua
 Features/Leaderboard.lua
+Features/Activity.lua
 Integrations/HousingDashboard.lua
 Commands.lua
 Core.lua

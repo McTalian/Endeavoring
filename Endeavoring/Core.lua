@@ -36,6 +36,7 @@ local function InitializeTabSystem(frame)
 	-- Register tabs with their content frames
 	frame.tasksTabID = frame:AddNamedTab("Tasks", ns.Tasks.CreateTab(frame))
 	frame.leaderboardTabID = frame:AddNamedTab("Leaderboard", ns.Leaderboard.CreateTab(frame))
+	frame.activityTabID = frame:AddNamedTab("Activity", ns.Activity.CreateTab(frame))
 	
 	-- Set initial tab
 	frame:SetTab(frame.tasksTabID, false)
