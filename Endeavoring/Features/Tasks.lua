@@ -121,6 +121,7 @@ local function CreateTaskRow(parent, index)
 	
 	local constants = ns.Constants
 	local row = CreateFrame("Button", nil, parent)
+	parent["row" .. index] = row
 	row:SetHeight(constants.TASK_ROW_HEIGHT)
 	row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * constants.TASK_ROW_HEIGHT))
 	row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * constants.TASK_ROW_HEIGHT))
@@ -139,14 +140,16 @@ local function CreateTaskRow(parent, index)
 	row.taskContainer:SetWidth(constants.TASK_TASK_WIDTH) -- Task column width
 
 	-- Task name (bold, gold) - inside container
-	row.name = row.taskContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.taskContainer.name = row.taskContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	row.name = row.taskContainer.name
 	row.name:SetPoint("LEFT", row.taskContainer, "LEFT", 0, 0)
 	row.name:SetPoint("RIGHT", row.taskContainer, "RIGHT", 0, 0)
 	row.name:SetJustifyH("LEFT")
 	row.name:SetMaxLines(1)
 
 	-- Task description (smaller, gray, below name) - inside container
-	row.description = row.taskContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall2")
+	row.taskContainer.description = row.taskContainer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall2")
+	row.description = row.taskContainer.description
 	row.description:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -2)
 	row.description:SetPoint("TOPRIGHT", row.name, "BOTTOMRIGHT", 0, -2)
 	row.description:SetJustifyH("LEFT")
@@ -160,13 +163,15 @@ local function CreateTaskRow(parent, index)
 	row.contributionContainer:SetWidth(constants.TASK_CONTRIBUTION_WIDTH)
 
 	-- Contribution column: icon then value anchored to right of task column
-	row.contributionIcon = row.contributionContainer:CreateTexture(nil, "ARTWORK")
+	row.contributionContainer.contributionIcon = row.contributionContainer:CreateTexture(nil, "ARTWORK")
+	row.contributionIcon = row.contributionContainer.contributionIcon
 	row.contributionIcon:SetAtlas("housing-dashboard-tasks-listitem-flag")
 	row.contributionIcon:SetSize(32, 32)
 	row.contributionIcon:SetPoint("CENTER", row.contributionContainer, "CENTER", 0, 0)
 	
 	-- Contribution value overlaid on icon (centered)
-	row.contribution = row.contributionContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	row.contributionContainer.contribution = row.contributionContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	row.contribution = row.contributionContainer.contribution
 	row.contribution:SetPoint("CENTER", row.contributionIcon, "CENTER", 0, 2)
 
 	row.xpContainer = CreateFrame("Frame", nil, row)
@@ -175,11 +180,13 @@ local function CreateTaskRow(parent, index)
 	row.xpContainer:SetWidth(constants.TASK_XP_WIDTH - constants.SCROLLBAR_WIDTH)
 
 	-- House XP column: value anchored right of coupons, icon to its left
-	row.xp = row.xpContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	row.xpContainer.xp = row.xpContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	row.xp = row.xpContainer.xp
 	row.xp:SetPoint("CENTER", row.xpContainer, "CENTER", 0, 0)
 	row.xp:SetJustifyH("CENTER")
 	
-	row.xpIcon = row.xpContainer:CreateTexture(nil, "ARTWORK")
+	row.xpContainer.xpIcon = row.xpContainer:CreateTexture(nil, "ARTWORK")
+	row.xpIcon = row.xpContainer.xpIcon
 	row.xpIcon:SetAtlas("housing-dashboard-estateXP-icon")
 	row.xpIcon:SetSize(16, 16)
 	row.xpIcon:SetPoint("CENTER", row.xp, "CENTER", -20, 0)
@@ -190,12 +197,14 @@ local function CreateTaskRow(parent, index)
 	row.couponsContainer:SetWidth(constants.TASK_COUPONS_WIDTH)
 
 	-- Coupons column: value anchored to right edge, icon to its left
-	row.coupons = row.couponsContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	row.couponsContainer.coupons = row.couponsContainer:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	row.coupons = row.couponsContainer.coupons
 	row.coupons:SetPoint("CENTER", row.couponsContainer, "CENTER", 0, 0)
 	row.coupons:SetJustifyH("CENTER")
 	row.coupons:SetWidth(constants.TASK_COUPONS_WIDTH) -- Account for scrollbar width
 	
-	row.couponsIcon = row.couponsContainer:CreateTexture(nil, "ARTWORK")
+	row.couponsContainer.couponsIcon = row.couponsContainer:CreateTexture(nil, "ARTWORK")
+	row.couponsIcon = row.couponsContainer.couponsIcon
 	row.couponsIcon:SetSize(16, 16)
 	row.couponsIcon:SetPoint("CENTER", row.coupons, "CENTER", -20, 0)
 
@@ -383,16 +392,16 @@ function Tasks.CreateTab(parent)
 	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
 
 	local header = CreateFrame("Frame", nil, content)
-	header:SetPoint("TOPLEFT")
-	header:SetPoint("TOPRIGHT")
-	header:SetHeight(22)
+	header:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -8)
+	header:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -8)
+	header:SetHeight(constants.TASK_HEADER_HEIGHT)
 
 	-- Account for scrollbar width from UIPanelScrollFrameTemplate
 	local scrollbarOffset = constants.SCROLLBAR_WIDTH
 
 	local nameHeader = CreateFrame("Button", nil, header)
 	nameHeader:SetPoint("LEFT", 8, 0)
-	nameHeader:SetSize(constants.TASK_TASK_WIDTH, 18)
+	nameHeader:SetSize(constants.TASK_TASK_WIDTH, constants.TASK_HEADER_HEIGHT)
 	nameHeader:SetScript("OnClick", function()
 		SetSort(constants.TASKS_SORT_NAME)
 	end)
@@ -403,7 +412,7 @@ function Tasks.CreateTab(parent)
 
 	local contributionHeader = CreateFrame("Button", nil, header)
 	contributionHeader:SetPoint("LEFT", nameHeader, "RIGHT", 0, 0)
-	contributionHeader:SetSize(constants.TASK_CONTRIBUTION_WIDTH, 18)
+	contributionHeader:SetSize(constants.TASK_CONTRIBUTION_WIDTH, constants.TASK_HEADER_HEIGHT)
 	contributionHeader:SetScript("OnClick", function()
 		SetSort(constants.TASKS_SORT_POINTS)
 	end)
@@ -414,7 +423,7 @@ function Tasks.CreateTab(parent)
 
 	local xpHeader = CreateFrame("Button", nil, header)
 	xpHeader:SetPoint("LEFT", contributionHeader, "RIGHT", 0, 0)
-	xpHeader:SetSize(constants.TASK_XP_WIDTH, 18)
+	xpHeader:SetSize(constants.TASK_XP_WIDTH, constants.TASK_HEADER_HEIGHT)
 	xpHeader:SetScript("OnClick", function()
 		SetSort(constants.TASKS_SORT_XP)
 	end)
@@ -425,7 +434,7 @@ function Tasks.CreateTab(parent)
 	
 	local couponsHeader = CreateFrame("Button", nil, header)
 	couponsHeader:SetPoint("LEFT", xpHeader, "RIGHT", 0, 0)
-	couponsHeader:SetSize(constants.TASK_COUPONS_WIDTH - scrollbarOffset, 18)
+	couponsHeader:SetSize(constants.TASK_COUPONS_WIDTH - scrollbarOffset, constants.TASK_HEADER_HEIGHT)
 	couponsHeader:SetScript("OnClick", function()
 		SetSort(constants.TASKS_SORT_COUPONS)
 	end)
@@ -436,7 +445,7 @@ function Tasks.CreateTab(parent)
 
 	local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -6)
-	scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -24, 0)
+	scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -26, 5)
 
 	local scrollChild = CreateFrame("Frame", nil, scrollFrame)
 	scrollChild:SetPoint("TOPLEFT")
@@ -453,11 +462,17 @@ function Tasks.CreateTab(parent)
 	emptyText:SetText(constants.NO_TASK_DATA)
 	emptyText:Hide()
 
+	parent.tasks = content
+	header.nameHeader = nameHeader
+	header.contributionHeader = contributionHeader
+	header.xpHeader = xpHeader
+	header.couponsHeader = couponsHeader
 	content.header = header
 	content.nameHeader = nameHeader.text
 	content.contributionHeader = contributionHeader.text
 	content.xpHeader = xpHeader.text
 	content.couponsHeader = couponsHeader.text
+	scrollFrame.scrollChild = scrollChild
 	content.scrollFrame = scrollFrame
 	content.scrollChild = scrollChild
 	content.emptyText = emptyText

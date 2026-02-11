@@ -45,10 +45,15 @@ local DebugPrint = ns.DebugPrint
 local ADDON_PREFIX = "Ndvrng"
 ---@enum Channels
 AddonMessages.ChatType = {
-	Guild = "GUILD",
 	Party = "PARTY",
+	Raid = "RAID",
+	Instance = "INSTANCE_CHAT",
+	Guild = "GUILD",
+	Office = "OFFICER",
 	Whisper = "WHISPER",
+	Channel = "CHANNEL",
 }
+local ChatType = AddonMessages.ChatType
 local MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit for addon messages
 
 -- State
@@ -101,7 +106,34 @@ function AddonMessages.BuildMessage(messageType, data)
 	return encoded
 end
 
+local function isValidDestination(channel, target)
+	if channel == ChatType.Guild and not ns.PlayerInfo.IsInGuild() then
+		DebugPrint("Cannot send guild message - not in a guild", "ff0000")
+		return false
+	end
 
+	if channel == ChatType.Whisper and (not target or target == "") then
+		DebugPrint("Cannot send whisper message - target player name is required", "ff0000")
+		return false
+	end
+
+	if (channel == ChatType.Party or channel == ChatType.Raid) and not ns.PlayerInfo.IsInHomeGroup() then
+		DebugPrint("Cannot send party or raid message - not in a \"non-instance\" group", "ff0000")
+		return false
+	end
+
+	if channel == ChatType.Instance and not ns.PlayerInfo.IsInInstanceGroup() then
+		DebugPrint("Cannot send instance message - not in an instance group", "ff0000")
+		return false
+	end
+
+	if channel == ChatType.Officer and not ns.PlayerInfo.IsGuildOfficer() then
+		DebugPrint("Cannot send officer message - not a guild officer", "ff0000")
+		return false
+	end
+
+	return true
+end
 
 --- Send a message via addon communication
 --- @param message string The message to send
@@ -114,6 +146,10 @@ function AddonMessages.SendMessage(message, channel, target)
 	end
 	
 	channel = channel or ChatType.Party
+
+	if not isValidDestination(channel, target) then
+		return false
+	end
 	
 	-- Pre-flight validation: check for chat messaging lockdown (instances, restricted zones)
 	if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then

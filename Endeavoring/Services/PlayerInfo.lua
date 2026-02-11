@@ -45,3 +45,33 @@ function PlayerInfo.GetCharacterInfo()
 		realm = realm,
 	}
 end
+
+--- Check if the player is currently in a guild
+--- @return boolean inGuild True if the player is in a guild, false otherwise
+function PlayerInfo.IsInGuild()
+	return IsInGuild()
+end
+
+--- Check if the player is currently in a group
+--- @return boolean inGroup True if the player is in a group, false otherwise
+function PlayerInfo.IsInGroup()
+	return IsInGroup()
+end
+
+--- Check if the player is currently in a "home" group (not an instance group)
+--- @return boolean inHomeGroup True if the player is in a home group, false otherwise
+function PlayerInfo.IsInHomeGroup()
+	return IsInGroup(LE_PARTY_CATEGORY_HOME)
+end
+
+--- Check if the player is currently in an instance group
+--- @return boolean inInstanceGroup True if the player is in an instance group, false otherwise
+function PlayerInfo.IsInInstanceGroup()
+	return IsInGroup(LE_PARTY_CATEGORY_INSTANCE)
+end
+
+--- Check if the player is a guild officer
+--- @return boolean isOfficer True if the player is a guild officer, false otherwise
+function PlayerInfo.IsGuildOfficer()
+	return PlayerInfo.IsInGuild() and (C_GuildInfo.IsGuildOfficer() or IsGuildLeader())
+end

@@ -50,7 +50,7 @@ local function CreateMainFrame()
 	-- TODO: Use PortraitFrameTemplate
 
 	local frame = CreateFrame("Frame", "EndeavoringFrame", UIParent, "PortraitFrameTemplate")
-	frame.TitleContainer.TitleText:SetText("Endeavoring")
+	frame.TitleContainer.TitleText:SetText(addonName)
 	frame:SetPortraitToAsset("Interface/AddOns/Endeavoring/Icons/endeavoring_panel_portrait.png")
 	frame:SetSize(constants.FRAME_WIDTH, constants.FRAME_HEIGHT)
 	frame:SetPoint("CENTER")
@@ -61,10 +61,6 @@ local function CreateMainFrame()
 	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 	frame:SetFrameStrata("DIALOG")
 	frame:SetClampedToScreen(true)
-
-	-- frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	-- frame.title:SetPoint("CENTER", frame.TitleBg, "CENTER", 8, 0)
-	-- frame.title:SetText("Endeavoring")
 
 	frame.header = ns.Header.Create(frame)
 	InitializeTabSystem(frame)

@@ -170,7 +170,8 @@ local function CreateLeaderboardRow(parent, index)
 	-- TODO: Make rows sortable by clicking headers (Rank, Player, Total, Entries)
 	
 	local constants = ns.Constants
-	local row = CreateFrame("Frame", nil, parent)
+	parent["row" .. index] = CreateFrame("Frame", nil, parent)
+	local row = parent["row" .. index]
 	row:SetHeight(constants.LEADERBOARD_ROW_HEIGHT)
 	row:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -((index - 1) * constants.LEADERBOARD_ROW_HEIGHT))
 	row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -((index - 1) * constants.LEADERBOARD_ROW_HEIGHT))
@@ -181,12 +182,13 @@ local function CreateLeaderboardRow(parent, index)
 	-- Rank number
 	row.rank = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.rank:SetPoint("LEFT", 6, 0)
-	row.rank:SetWidth(30)
+	row.rank:SetWidth(constants.LEADERBOARD_RANK_WIDTH)
 	row.rank:SetJustifyH("LEFT")
 
 	-- Display name
 	row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	row.name:SetPoint("LEFT", row.rank, "RIGHT", 8, 0)
+	row.name:SetPoint("LEFT", row.rank, "RIGHT", 0, 0)
+	row.name:SetWidth(constants.LEADERBOARD_NAME_WIDTH)
 	row.name:SetJustifyH("LEFT")
 
 	-- Addon indicator icon (shows if player is using Endeavoring)
@@ -200,16 +202,13 @@ local function CreateLeaderboardRow(parent, index)
 	row.total = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.total:SetWidth(constants.LEADERBOARD_TOTAL_WIDTH)
 	row.total:SetJustifyH("RIGHT")
-	row.total:SetPoint("RIGHT", row, "RIGHT", -constants.LEADERBOARD_ENTRIES_WIDTH - 12, 0)
+	row.total:SetPoint("LEFT", row.name, "RIGHT", 0, 0)
 
 	-- Number of entries
 	row.entries = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	row.entries:SetWidth(constants.LEADERBOARD_ENTRIES_WIDTH)
 	row.entries:SetJustifyH("RIGHT")
-	row.entries:SetPoint("RIGHT", row, "RIGHT", -6, 0)
-
-	-- Connect name width
-	row.name:SetPoint("RIGHT", row.total, "LEFT", -8, 0)
+	row.entries:SetPoint("LEFT", row.total, "RIGHT", 0, 0)
 	
 	-- Tooltip handlers
 	row:SetScript("OnEnter", function(self)
@@ -359,15 +358,17 @@ end
 --- @return Frame content The leaderboard tab content
 function Leaderboard.CreateTab(parent)
 	local constants = ns.Constants
-	local content = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+	parent.leaderboard = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
+	local content = parent.leaderboard
 	content:SetPoint("TOPLEFT", parent.TabSystem, "BOTTOMLEFT", -2, 0)
 	content:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -12, 12)
 
 	-- Time range filter buttons
-	local filterContainer = CreateFrame("Frame", nil, content)
+	content.filterContainer = CreateFrame("Frame", nil, content)
+	local filterContainer = content.filterContainer
 	filterContainer:SetPoint("TOPLEFT", 4, -4)
 	filterContainer:SetPoint("TOPRIGHT", -4, -4)
-	filterContainer:SetHeight(30)
+	filterContainer:SetHeight(constants.LEADERBOARD_FILTER_HEIGHT)
 
 	local filterButtons = {}
 	local filterOrder = {TIME_RANGE.ALL_TIME, TIME_RANGE.THIS_WEEK, TIME_RANGE.TODAY}
@@ -392,40 +393,46 @@ function Leaderboard.CreateTab(parent)
 	local header = CreateFrame("Frame", nil, content)
 	header:SetPoint("TOPLEFT", filterContainer, "BOTTOMLEFT", 0, -8)
 	header:SetPoint("TOPRIGHT", filterContainer, "BOTTOMRIGHT", 0, -8)
-	header:SetHeight(22)
+	header:SetHeight(constants.LEADERBOARD_HEADER_HEIGHT)
 
-	local rankHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	header.rankHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local rankHeader = header.rankHeader
 	rankHeader:SetPoint("LEFT", 6, 0)
-	rankHeader:SetWidth(30)
+	rankHeader:SetWidth(constants.LEADERBOARD_RANK_WIDTH)
 	rankHeader:SetJustifyH("LEFT")
 	rankHeader:SetText("Rank")
 
-	local nameHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	nameHeader:SetPoint("LEFT", rankHeader, "RIGHT", 8, 0)
+	header.nameHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local nameHeader = header.nameHeader
+	nameHeader:SetPoint("LEFT", rankHeader, "RIGHT", 0, 0)
+	nameHeader:SetWidth(constants.LEADERBOARD_NAME_WIDTH)
 	nameHeader:SetJustifyH("LEFT")
 	nameHeader:SetText("Player")
 
 	-- Account for scrollbar width from UIPanelScrollFrameTemplate
 	local scrollbarOffset = constants.SCROLLBAR_WIDTH
 	
-	local totalHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	totalHeader:SetPoint("RIGHT", header, "RIGHT", -constants.LEADERBOARD_ENTRIES_WIDTH - 12 - scrollbarOffset, 0)
+	header.totalHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local totalHeader = header.totalHeader
+	totalHeader:SetPoint("LEFT", nameHeader, "RIGHT", 0, 0)
 	totalHeader:SetWidth(constants.LEADERBOARD_TOTAL_WIDTH)
 	totalHeader:SetJustifyH("RIGHT")
 	totalHeader:SetText("Total")
 
-	local entriesHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	entriesHeader:SetPoint("RIGHT", header, "RIGHT", -6 - scrollbarOffset, 0)
+	header.entriesHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	local entriesHeader = header.entriesHeader
+	entriesHeader:SetPoint("LEFT", totalHeader, "RIGHT", 0, 0)
 	entriesHeader:SetWidth(constants.LEADERBOARD_ENTRIES_WIDTH)
 	entriesHeader:SetJustifyH("RIGHT")
-	entriesHeader:SetText("Entries")
+	entriesHeader:SetText("Tasks Completed")
 
 	-- Scroll frame
 	local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -6)
-	scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -24, 0)
+	scrollFrame:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT", -26, 5)
 
-	local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+	scrollFrame.scrollChild = CreateFrame("Frame", nil, scrollFrame)
+	local scrollChild = scrollFrame.scrollChild
 	scrollChild:SetPoint("TOPLEFT")
 	scrollChild:SetPoint("TOPRIGHT")
 	scrollChild:SetHeight(1)
