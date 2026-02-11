@@ -21,6 +21,7 @@ local function HandleAlias(args)
 			print(INFO .. " Alias set to: " .. args)
 			-- Broadcast updated manifest
 			ns.Coordinator.SendManifestDebounced()
+			ns.API.RequestActivityLog()
 		else
 			print(ERROR .. " Failed to set alias. Make sure you're logged in.")
 		end

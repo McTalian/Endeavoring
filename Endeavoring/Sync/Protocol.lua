@@ -270,6 +270,7 @@ local function HandleAliasUpdate(sender, data)
 	local success = ns.DB.UpdateProfileAlias(battleTag, alias, aliasUpdatedAt)
 	if success then
 		DebugPrint(string.format("Updated alias for %s to '%s'", battleTag, alias))
+		ns.API.RequestActivityLog()  -- Refresh activity log to show updated alias
 	end
 end
 
@@ -336,6 +337,7 @@ local function HandleCharsUpdate(sender, data)
 			DebugPrint(string.format("Updated %d character(s) for %s", #validChars, battleTag))
 			-- Invalidate cache since we added characters
 			ns.CharacterCache.Invalidate(battleTag)
+			ns.API.RequestActivityLog()  -- Refresh activity log to show updated characters
 		end
 	end
 end
