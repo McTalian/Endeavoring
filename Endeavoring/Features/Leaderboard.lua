@@ -10,19 +10,21 @@ local DebugPrint = ns.DebugPrint
 
 -- Time range constants (in seconds)
 local TIME_RANGE = {
-	ALL_TIME = 0,
-	TODAY = 86400,        -- 24 hours
-	THIS_WEEK = 604800,   -- 7 days
+	CURRENT_ENDEAVOR = 0,  -- Entire duration of active endeavor
+	TODAY = 86400,         -- 24 hours
+	THIS_WEEK = 604800,    -- 7 days
 }
 
 -- Current filter state
 local state = {
-	timeRange = TIME_RANGE.ALL_TIME,
+	timeRange = TIME_RANGE.CURRENT_ENDEAVOR,
+	sortKey = ns.Constants.LEADERBOARD_SORT_RANK,  -- Default sort by rank ascending
+	sortAsc = true,
 }
 
 --- Build leaderboard from activity log
 --- @param activityLog table The activity log from GetInitiativeActivityLogInfo()
---- @param timeRange number|nil Filter entries within this many seconds (nil = all time)
+--- @param timeRange number|nil Filter entries within this many seconds (nil = current endeavor)
 --- @return table leaderboard Sorted array of {player, total, entries}
 function Leaderboard.BuildFromActivityLog(activityLog, timeRange)
 	if not activityLog or not activityLog.taskActivity then
@@ -79,7 +81,7 @@ end
 
 --- Get enriched leaderboard with BattleTag/Alias mapping
 --- @param activityLog table The activity log from GetInitiativeActivityLogInfo()
---- @param timeRange number|nil Filter entries within this many seconds (nil = all time)
+--- @param timeRange number|nil Filter entries within this many seconds (nil = current endeavor)
 --- @return table leaderboard Sorted array with alias field added
 function Leaderboard.BuildEnriched(activityLog, timeRange)
 	local leaderboard = Leaderboard.BuildFromActivityLog(activityLog, timeRange)
@@ -134,7 +136,130 @@ function Leaderboard.BuildEnriched(activityLog, timeRange)
 		return a.total > b.total
 	end)
 
+	-- Assign ranks based on default sort (total descending)
+	for i, entry in ipairs(enrichedLeaderboard) do
+		entry.rank = i
+	end
+
 	return enrichedLeaderboard
+end
+
+--- Re-sort leaderboard based on current sort state
+--- @param leaderboard table The enriched leaderboard from BuildEnriched
+--- @return table sorted Sorted copy of leaderboard
+local function BuildSortedLeaderboard(leaderboard)
+	if not leaderboard or #leaderboard == 0 then
+		return {}
+	end
+
+	-- Create a copy to avoid mutating original
+	local sorted = {}
+	for _, entry in ipairs(leaderboard) do
+		table.insert(sorted, entry)
+	end
+
+	local constants = ns.Constants
+	local sortKey = state.sortKey or constants.LEADERBOARD_SORT_RANK
+	local sortAsc = state.sortAsc ~= false
+
+	local function Compare(a, b)
+		if sortKey == constants.LEADERBOARD_SORT_NAME then
+			local left = a.displayName or ""
+			local right = b.displayName or ""
+			if left == right then
+				return (a.rank or 0) < (b.rank or 0)
+			end
+			if sortAsc then
+				return left < right
+			end
+			return left > right
+		elseif sortKey == constants.LEADERBOARD_SORT_TOTAL then
+			local leftTotal = a.total or 0
+			local rightTotal = b.total or 0
+			if leftTotal == rightTotal then
+				return (a.rank or 0) < (b.rank or 0)
+			end
+			if sortAsc then
+				return leftTotal < rightTotal
+			end
+			return leftTotal > rightTotal
+		elseif sortKey == constants.LEADERBOARD_SORT_ENTRIES then
+			local leftEntries = a.entries or 0
+			local rightEntries = b.entries or 0
+			if leftEntries == rightEntries then
+				return (a.rank or 0) < (b.rank or 0)
+			end
+			if sortAsc then
+				return leftEntries < rightEntries
+			end
+			return leftEntries > rightEntries
+		end
+
+		-- Default: sort by rank ascending
+		local leftRank = a.rank or 0
+		local rightRank = b.rank or 0
+		if sortAsc then
+			return leftRank < rightRank
+		end
+		return leftRank > rightRank
+	end
+
+	table.sort(sorted, Compare)
+	return sorted
+end
+
+--- Update sort header indicators
+local function UpdateSortHeader()
+	if not ns.ui.leaderboardUI then
+		return
+	end
+
+	local rankSuffix = ""
+	local nameSuffix = ""
+	local totalSuffix = ""
+	local entriesSuffix = ""
+	local asc = CreateAtlasMarkup("editmode-up-arrow", 16, 11, 1, 4)
+	local desc = CreateAtlasMarkup("editmode-down-arrow", 16, 11, 1, -4)
+	local constants = ns.Constants
+
+	if state.sortKey == constants.LEADERBOARD_SORT_RANK or not state.sortKey then
+		rankSuffix = state.sortAsc and asc or desc
+	elseif state.sortKey == constants.LEADERBOARD_SORT_NAME then
+		nameSuffix = state.sortAsc and asc or desc
+	elseif state.sortKey == constants.LEADERBOARD_SORT_TOTAL then
+		totalSuffix = state.sortAsc and asc or desc
+	elseif state.sortKey == constants.LEADERBOARD_SORT_ENTRIES then
+		entriesSuffix = state.sortAsc and asc or desc
+	end
+
+	ns.ui.leaderboardUI.rankHeader:SetText("Rank" .. rankSuffix)
+	ns.ui.leaderboardUI.nameHeader:SetText("Player" .. nameSuffix)
+	ns.ui.leaderboardUI.totalHeader:SetText("Total" .. totalSuffix)
+	ns.ui.leaderboardUI.entriesHeader:SetText("Tasks Completed" .. entriesSuffix)
+end
+
+--- Set the sort key and direction
+--- @param sortKey string One of LEADERBOARD_SORT_* constants
+local function SetSort(sortKey)
+	local constants = ns.Constants
+	if state.sortKey == sortKey then
+		state.sortAsc = not state.sortAsc
+	else
+		state.sortKey = sortKey
+		-- Default sort direction per column
+		if sortKey == constants.LEADERBOARD_SORT_RANK then
+			state.sortAsc = true  -- Rank 1 first
+		elseif sortKey == constants.LEADERBOARD_SORT_NAME then
+			state.sortAsc = true  -- A-Z
+		elseif sortKey == constants.LEADERBOARD_SORT_TOTAL then
+			state.sortAsc = false -- Highest first
+		elseif sortKey == constants.LEADERBOARD_SORT_ENTRIES then
+			state.sortAsc = false -- Most first
+		end
+	end
+
+	UpdateSortHeader()
+	Leaderboard.Refresh()
 end
 
 --- Set the current time range filter
@@ -154,11 +279,11 @@ end
 --- @return string name Display name for the time range
 function Leaderboard.GetTimeRangeName(range)
 	if range == TIME_RANGE.TODAY then
-		return "Today"
+		return "24 Hours"
 	elseif range == TIME_RANGE.THIS_WEEK then
-		return "This Week"
+		return "7 Days"
 	else
-		return "All Time"
+		return "Current Endeavor"
 	end
 end
 
@@ -167,8 +292,6 @@ end
 --- @param index number The row index
 --- @return Frame row The created row
 local function CreateLeaderboardRow(parent, index)
-	-- TODO: Make rows sortable by clicking headers (Rank, Player, Total, Entries)
-	
 	local constants = ns.Constants
 	parent["row" .. index] = CreateFrame("Frame", nil, parent)
 	local row = parent["row" .. index]
@@ -303,6 +426,9 @@ local function UpdateLeaderboardDisplay()
 		return
 	end
 
+	-- Apply custom sorting
+	leaderboard = BuildSortedLeaderboard(leaderboard)
+
 	leaderboardUI.emptyText:Hide()
 	local totalHeight = #leaderboard * constants.LEADERBOARD_ROW_HEIGHT
 	leaderboardUI.scrollChild:SetHeight(totalHeight)
@@ -319,7 +445,7 @@ local function UpdateLeaderboardDisplay()
 		end
 
 		row.data = entry
-		row.rank:SetText(tostring(index))
+		row.rank:SetText(tostring(entry.rank or index))
 		row.name:SetText(entry.displayName or "Unknown")
 		row.total:SetText(string.format("%.3f", entry.total or 0))
 		row.entries:SetText(tostring(entry.entries or 0))
@@ -353,6 +479,11 @@ local function UpdateLeaderboardDisplay()
 	end
 end
 
+--- Refresh the leaderboard display
+function Leaderboard.Refresh()
+	UpdateLeaderboardDisplay()
+end
+
 --- Create the leaderboard tab UI
 --- @param parent Frame The parent frame
 --- @return Frame content The leaderboard tab content
@@ -371,10 +502,10 @@ function Leaderboard.CreateTab(parent)
 	filterContainer:SetHeight(constants.LEADERBOARD_FILTER_HEIGHT)
 
 	local filterButtons = {}
-	local filterOrder = {TIME_RANGE.ALL_TIME, TIME_RANGE.THIS_WEEK, TIME_RANGE.TODAY}
+	local filterOrder = {TIME_RANGE.CURRENT_ENDEAVOR, TIME_RANGE.THIS_WEEK, TIME_RANGE.TODAY}
 	for i, range in ipairs(filterOrder) do
 		local button = CreateFrame("Button", nil, filterContainer, "UIPanelButtonTemplate")
-		button:SetSize(90, 22)
+		button:SetSize(constants.LEADERBOARD_FILTER_BUTTON_WIDTH, constants.LEADERBOARD_FILTER_BUTTON_HEIGHT)
 		button:SetText(Leaderboard.GetTimeRangeName(range))
 		button:SetScript("OnClick", function()
 			SetTimeRangeFilter(range)
@@ -395,36 +526,52 @@ function Leaderboard.CreateTab(parent)
 	header:SetPoint("TOPRIGHT", filterContainer, "BOTTOMRIGHT", 0, -8)
 	header:SetHeight(constants.LEADERBOARD_HEADER_HEIGHT)
 
-	header.rankHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	local rankHeader = header.rankHeader
+	local rankHeader = CreateFrame("Button", nil, header)
 	rankHeader:SetPoint("LEFT", 6, 0)
-	rankHeader:SetWidth(constants.LEADERBOARD_RANK_WIDTH)
-	rankHeader:SetJustifyH("LEFT")
-	rankHeader:SetText("Rank")
+	rankHeader:SetSize(constants.LEADERBOARD_RANK_WIDTH, constants.LEADERBOARD_HEADER_HEIGHT)
+	rankHeader:SetScript("OnClick", function()
+		SetSort(constants.LEADERBOARD_SORT_RANK)
+	end)
+	rankHeader.text = rankHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	rankHeader.text:SetAllPoints()
+	rankHeader.text:SetJustifyH("LEFT")
+	rankHeader.text:SetText("Rank")
 
-	header.nameHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	local nameHeader = header.nameHeader
+	local nameHeader = CreateFrame("Button", nil, header)
 	nameHeader:SetPoint("LEFT", rankHeader, "RIGHT", 0, 0)
-	nameHeader:SetWidth(constants.LEADERBOARD_NAME_WIDTH)
-	nameHeader:SetJustifyH("LEFT")
-	nameHeader:SetText("Player")
+	nameHeader:SetSize(constants.LEADERBOARD_NAME_WIDTH, constants.LEADERBOARD_HEADER_HEIGHT)
+	nameHeader:SetScript("OnClick", function()
+		SetSort(constants.LEADERBOARD_SORT_NAME)
+	end)
+	nameHeader.text = nameHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	nameHeader.text:SetAllPoints()
+	nameHeader.text:SetJustifyH("LEFT")
+	nameHeader.text:SetText("Player")
 
 	-- Account for scrollbar width from UIPanelScrollFrameTemplate
 	local scrollbarOffset = constants.SCROLLBAR_WIDTH
 	
-	header.totalHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	local totalHeader = header.totalHeader
+	local totalHeader = CreateFrame("Button", nil, header)
 	totalHeader:SetPoint("LEFT", nameHeader, "RIGHT", 0, 0)
-	totalHeader:SetWidth(constants.LEADERBOARD_TOTAL_WIDTH)
-	totalHeader:SetJustifyH("RIGHT")
-	totalHeader:SetText("Total")
+	totalHeader:SetSize(constants.LEADERBOARD_TOTAL_WIDTH, constants.LEADERBOARD_HEADER_HEIGHT)
+	totalHeader:SetScript("OnClick", function()
+		SetSort(constants.LEADERBOARD_SORT_TOTAL)
+	end)
+	totalHeader.text = totalHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	totalHeader.text:SetAllPoints()
+	totalHeader.text:SetJustifyH("RIGHT")
+	totalHeader.text:SetText("Total")
 
-	header.entriesHeader = header:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	local entriesHeader = header.entriesHeader
+	local entriesHeader = CreateFrame("Button", nil, header)
 	entriesHeader:SetPoint("LEFT", totalHeader, "RIGHT", 0, 0)
-	entriesHeader:SetWidth(constants.LEADERBOARD_ENTRIES_WIDTH)
-	entriesHeader:SetJustifyH("RIGHT")
-	entriesHeader:SetText("Tasks Completed")
+	entriesHeader:SetSize(constants.LEADERBOARD_ENTRIES_WIDTH, constants.LEADERBOARD_HEADER_HEIGHT)
+	entriesHeader:SetScript("OnClick", function()
+		SetSort(constants.LEADERBOARD_SORT_ENTRIES)
+	end)
+	entriesHeader.text = entriesHeader:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	entriesHeader.text:SetAllPoints()
+	entriesHeader.text:SetJustifyH("RIGHT")
+	entriesHeader.text:SetText("Tasks Completed")
 
 	-- Scroll frame
 	local scrollFrame = CreateFrame("ScrollFrame", nil, content, "UIPanelScrollFrameTemplate")
@@ -459,6 +606,10 @@ function Leaderboard.CreateTab(parent)
 	-- Store references
 	content.filterButtons = filterButtons
 	content.header = header
+	content.rankHeader = rankHeader.text
+	content.nameHeader = nameHeader.text
+	content.totalHeader = totalHeader.text
+	content.entriesHeader = entriesHeader.text
 	content.scrollFrame = scrollFrame
 	content.scrollChild = scrollChild
 	content.emptyText = emptyText
@@ -466,6 +617,7 @@ function Leaderboard.CreateTab(parent)
 
 	ns.ui.leaderboardUI = content
 	UpdateFilterButtons()
+	UpdateSortHeader()  -- Initialize sort indicators
 
 	content:Hide()
 	return content

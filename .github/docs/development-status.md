@@ -1,8 +1,21 @@
 # Development Status
 
-**Last Updated**: February 9, 2026
+**Last Updated**: February 10, 2026
 
 ## Recent Work 🎉
+
+**Leaderboard Column Sorting (Feb 10)** ✅
+- **Sortable columns**: All four leaderboard columns (Rank, Player, Total, Tasks Completed) now clickable
+- **Sort constants**: Added LEADERBOARD_SORT_RANK, LEADERBOARD_SORT_NAME, LEADERBOARD_SORT_TOTAL, LEADERBOARD_SORT_ENTRIES to Bootstrap.lua
+- **Sort logic**: BuildSortedLeaderboard() handles custom column sorting with proper tie-breaking to rank
+- **Default sort**: Rank ascending (Rank 1 first) with visual up arrow indicator
+- **Smart defaults**: Each column has intuitive default direction (Rank/Name ascending, Total/Entries descending)
+- **Visual indicators**: Up/down arrows show active sort column and direction
+- **Header conversion**: Converted all headers from FontStrings to clickable Buttons with OnClick handlers
+- **Rank preservation**: Rank column shows actual rank from default sort, not display position
+- **Refresh function**: Added public Leaderboard.Refresh() wrapper for consistency with Tasks.Refresh()
+- **UX clarity**: Renamed "All Time" filter to "Current Endeavor" to eliminate scope confusion
+- **In-game validation**: User tested all sorting combinations and confirmed working perfectly
 
 **Header Enhancements & Sortable Columns (Feb 9 - Late)** ✅
 - **Sortable columns**: Added House XP and Coupons column sorting to Tasks tab
@@ -280,9 +293,9 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 - ✅ **Task row improvements** (Feb 9, 2026 - Early) - Complete table redesign with icons, separators, coupons column
 - ✅ **Tab styling polish** (Feb 8, 2026) - Migrated to Blizzard's TabSystemTemplate for better visuals
 - ✅ **Header enhancements** (Feb 9, 2026 - Late) - Colored progress bar, milestone list with tooltips, endeavor description icon
+- ✅ **Leaderboard column sorting** (Feb 10, 2026) - All four columns (Rank, Player, Total, Tasks Completed) clickable with smart defaults
 
 **Remaining Enhancements** (documented as TODOs):
-- [ ] **Leaderboard column sorting** ([Leaderboard.lua#L170](../../Endeavoring/Features/Leaderboard.lua#L170)) - Make Rank, Player, Total, and Entries columns sortable by clicking headers
 - [ ] Additional time ranges ("This Month", custom date selector)
 - [ ] Activity/History tab (separate from leaderboard, shows raw activity log entries)
 
@@ -636,30 +649,63 @@ Codebase is clean and well-organized:
 
 ### Future Enhancements
 
-**Task Sorting & Filtering**:
-- Sort/filter task list beyond basic location grouping
-- Help players find relevant tasks efficiently
+**Task Grouping & Smart Filtering** (Requested Feb 10):
+- Group/filter tasks by location type: "In the Neighborhood", "In the Related Zone", "End Game"
+- Help players find relevant tasks efficiently based on where they want to play
 - Identify overlapping tasks for combined completion
 - Example: Raid boss kills may count toward multiple tasks
 
-**Catalog Exchange (Phase 3.6)**:
+**Personal Activity Log** (Requested Feb 10):
+- Per-character activity tracking and statistics
+- Show which activities you favor and on which characters
+- Complement the aggregated leaderboard view with individual character insights
+- Help players understand their play patterns across alts
+
+**Housing XP Cap Progress Bar** (Requested Feb 10):
+- Display progress toward housing XP cap (2250 from activities + 250 from chest)
+- Visual indicator of how much more XP you can earn this period
+- Helps players optimize their time and avoid wasting effort on capped rewards
+
+**Endeavor Completion Alert** (Requested Feb 10):
+- Alert/notification if endeavor is complete but chest hasn't been looted
+- Reminder for easy 250 housing XP that players might forget
+- Prevent missing out on reward before endeavor period ends
+
+**True "All Time" Tracking** (Idea - Feb 10):
+- Currently "Current Endeavor" filter shows data for active endeavor only (Blizzard API limitation)
+- Could support true all-time tracking across multiple endeavor periods by storing final activity snapshots
+- Would require: someone with addon to capture final state + data propagation mechanism
+- Alternative: Companion desktop app + web app that uploads to central database
+- **Status**: Interesting concept but complex - low priority unless strong user demand
+- **Note**: Renamed filter from "All Time" → "Current Endeavor" (Feb 10) to eliminate confusion about scope
+
+**Catalog Exchange (Phase 3.6):**
 - Exchange BattleTag lists to discover completely missed profiles
 - Request specific missing profiles
 - Fills gaps that gossip alone can't handle
 
-**Leaderboard UI Panel**:
-- Convert CLI leaderboard to visual panel
-- Use same async event-driven pattern
-- BattleTag/alias integration from synced profiles
-- Time range selector buttons
 
 ## Testing Status
 
-**Manual Testing**: In progress during development
+**Manual Testing**: Active - user testing with guild members
 
 **Automated Testing**: Not yet implemented
 
 **Test Coverage**: N/A
+
+### Known Issues
+
+**Coupon Display Quirk** (Feb 10):
+- Occasionally coupons show as "-" on first login to a character
+- Does not persist after relog/reload
+- Suspected Blizzard API timing issue - data not fully loaded when queried
+- No Lua errors generated
+- **Status**: Monitoring - may self-resolve as Blizzard polishes Endeavors system
+
+**Fixed Issues** (Feb 10):
+- ✅ Debug message when logging into non-guild characters - Added channel validation in AddonMessages.lua
+- ✅ Alias updates not refreshing leaderboard - Added RequestActivityLog() calls after profile changes
+- ✅ First click on Rank column appearing to do nothing - Fixed state initialization to explicitly set default sort key
 
 ## Dependencies
 
