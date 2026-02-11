@@ -4,6 +4,26 @@
 
 ## Recent Work 🎉
 
+**Activity Tab & Color Curves Exploration (Feb 10)** ✅ / 🚧
+- **Activity tab implementation**: Complete third tab showing chronological task completion log with sorting and filtering
+  - Sortable columns: Time, Task, Player, Contribution (clickable headers with visual indicators)
+  - Time range filter: Dropdown with Last Hour, Last 4 Hours, Last 24 Hours, Current Endeavor options using native WowStyle1DropdownTemplate
+  - "My Characters Only" checkbox filter for personal activity tracking
+  - Multi-line player display: Top line shows alias/BattleTag with Endeavoring icon, bottom line shows character name
+  - Task name tooltips: Hover to see full task names for truncated entries
+  - Larger rows (44px): Following Tasks tab pattern with separator lines between entries
+  - White fonts: GameFontWhite/GameFontWhiteSmall for better contrast and visual hierarchy
+  - Container pattern: Proper vertical centering using TOPLEFT/BOTTOMLEFT anchors like Tasks tab
+  - Contribution format: 3-decimal precision for fractional values (+0.500, +1.250)
+- **Color Curves API discovery**: Explored WoW Midnight's new C_CurveUtil.CreateColorCurve() system for smooth color transitions
+  - Implemented BuildProgressColorCurve() for dynamic progress bar coloring
+  - Tested multiple schemes: milestone-aware transitions, profession quality tiers, blue→cyan gradient
+  - **In-Progress**: Need more iteration on color progression (currently blue→cyan, may need refinement)
+  - Benefits: Smooth interpolation, no manual math, consistent with Blizzard's internal systems
+- **Native dropdown fix**: Replaced EasyMenu (external library) with WowStyle1DropdownTemplate and SetupMenu() callback
+- **Header simplification**: Changed "Character/Account" header to "Player" for cleaner labeling
+- **In-game validation**: User tested sorting, filtering, tooltips - all working correctly
+
 **Leaderboard Column Sorting (Feb 10)** ✅
 - **Sortable columns**: All four leaderboard columns (Rank, Player, Total, Tasks Completed) now clickable
 - **Sort constants**: Added LEADERBOARD_SORT_RANK, LEADERBOARD_SORT_NAME, LEADERBOARD_SORT_TOTAL, LEADERBOARD_SORT_ENTRIES to Bootstrap.lua
