@@ -232,6 +232,15 @@ local function HandleDefault()
 	ns.ToggleMainFrame()
 end
 
+--- Handle settings command - open settings panel
+local function HandleSettings()
+	if ns.Settings then
+		ns.Settings.Open()
+	else
+		print(ERROR .. " Settings module not loaded yet. Please try again in a moment.")
+	end
+end
+
 -- Command Router
 
 --- Route slash command to appropriate handler
@@ -249,11 +258,14 @@ local function RouteCommand(msg)
 		HandleLeaderboard(args)
 	elseif command == "verbose" then
 		HandleToggleVerbose()
+	elseif command == "settings" or command == "config" or command == "options" then
+		HandleSettings()
 	elseif command == "help" then
 		print(INFO .. " Endeavoring commands:")
 		print("  /endeavoring alias [name] - Set or show your player alias")
 		print("  /endeavoring sync [subcommand] - Sync-related commands (type '/endeavoring sync help' for details)")
 		print("  /endeavoring leaderboard [all|today|week] - Show contribution leaderboard")
+		print("  /endeavoring settings - Open the settings panel")
 		print("  /endeavoring verbose - Toggle verbose debug mode")
 	else
 		HandleDefault()

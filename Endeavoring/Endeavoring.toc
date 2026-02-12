@@ -31,6 +31,7 @@ Features/Header.lua
 Features/Tasks.lua
 Features/Leaderboard.lua
 Features/Activity.lua
+Features/Settings.lua
 Integrations/HousingDashboard.lua
 Commands.lua
 Core.lua

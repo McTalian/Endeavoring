@@ -35,6 +35,8 @@ local DEFAULT_DB = {
 		profiles = {},
 		activityLogCache = {},  -- Keyed by neighborhoodGUID
 		verboseDebug = false,
+		settings = nil,  -- User preferences
+		lastSelectedTab = nil,  -- Remember last tab (1=Tasks, 2=Leaderboard, 3=Activity)
 		version = 1
 	}
 }
@@ -551,5 +553,49 @@ function DB.ClearActivityLogCache(neighborhoodGUID)
 	else
 		EndeavoringDB.global.activityLogCache = {}
 	end
+end
+
+-- =============================================================================
+-- Settings
+-- =============================================================================
+
+--- Get user settings
+--- @return table|nil Settings table
+function DB.GetSettings()
+	if not EndeavoringDB or not EndeavoringDB.global then
+		return nil
+	end
+	
+	return EndeavoringDB.global.settings
+end
+
+--- Set user settings
+--- @param settings table Settings table
+function DB.SetSettings(settings)
+	if not EndeavoringDB or not EndeavoringDB.global then
+		return
+	end
+	
+	EndeavoringDB.global.settings = settings
+end
+
+--- Get last selected tab
+--- @return number|nil Tab ID (1=Tasks, 2=Leaderboard, 3=Activity)
+function DB.GetLastSelectedTab()
+	if not EndeavoringDB or not EndeavoringDB.global then
+		return nil
+	end
+	
+	return EndeavoringDB.global.lastSelectedTab
+end
+
+--- Set last selected tab
+--- @param tabID number|nil Tab ID to remember
+function DB.SetLastSelectedTab(tabID)
+	if not EndeavoringDB or not EndeavoringDB.global then
+		return
+	end
+	
+	EndeavoringDB.global.lastSelectedTab = tabID
 end
 

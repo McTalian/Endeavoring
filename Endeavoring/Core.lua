@@ -38,8 +38,28 @@ local function InitializeTabSystem(frame)
 	frame.leaderboardTabID = frame:AddNamedTab("Leaderboard", ns.Leaderboard.CreateTab(frame))
 	frame.activityTabID = frame:AddNamedTab("Activity", ns.Activity.CreateTab(frame))
 	
-	-- Set initial tab
-	frame:SetTab(frame.tasksTabID, false)
+	-- Hook tab selection to save preference
+	local originalSetTab = frame.SetTab
+	frame.SetTab = function(self, tabID, ...)
+		originalSetTab(self, tabID, ...)
+		if ns.Settings then
+			ns.Settings.SaveLastTab(tabID)
+		end
+	end
+	
+	-- Set initial tab based on user preference
+	local startupTab = frame.tasksTabID  -- Default to Tasks
+	if ns.Settings then
+		local startupTabID = ns.Settings.GetStartupTab()
+		if startupTabID == 1 then
+			startupTab = frame.tasksTabID
+		elseif startupTabID == 2 then
+			startupTab = frame.leaderboardTabID
+		elseif startupTabID == 3 then
+			startupTab = frame.activityTabID
+		end
+	end
+	frame:SetTab(startupTab, false)
 end
 
 local function RefreshInitiativeUI()

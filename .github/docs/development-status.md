@@ -4,6 +4,37 @@
 
 ## Recent Work 🎉
 
+**Settings Panel Implementation (Feb 11)** ✅ / 🐛
+- **New settings panel**: Complete integration with WoW's modern Settings API for beta release
+  - Created: Features/Settings.lua - full settings panel using RegisterVerticalLayoutCategory
+  - Sections: General, Player Alias, Debug, About
+  - Default Tab dropdown: Choose Tasks, Leaderboard, or Activity as startup tab
+  - Remember Last Tab checkbox: Resume where you left off on /reload (has known bug - see below)
+  - Change Player Alias button: Set custom display name via StaticPopup dialog with edit box
+  - Debug Mode checkbox: Enable verbose logging for troubleshooting
+  - Reset All Settings button: Reset to defaults with confirmation dialog
+  - View Addon Info button: Version, author, CC BY 3.0 attribution for Delapouite icon
+  - Integration: Proper WoW Settings system with Settings.RegisterAddOnCategory()
+  - Commands: `/endeavoring settings` (also `config`, `options`) opens panel
+- **Database extensions**: Added settings storage and last tab tracking
+  - DB.GetSettings() / DB.SetSettings() for preferences
+  - DB.GetLastSelectedTab() / DB.SetLastSelectedTab() for tab memory
+  - Defaults: defaultTab=1 (Tasks), rememberLastTab=true, debugMode=false
+- **Tab preference system**: Integrated with Core.lua frame initialization
+  - Settings.GetStartupTab() checks rememberLastTab setting and returns appropriate tab
+  - Tab changes automatically saved via hooked SetTab() function
+  - Applied on frame creation (InitializeTabSystem), not on OnShow
+- **WoW API challenges resolved**:
+  - Fixed: Naming collision with global Settings API (captured as WoWSettings)
+  - Fixed: CreateSettingsButtonInitializer is global function, not Settings.CreateButton
+  - Fixed: StaticPopup field is EditBox (capital E), not editBox (lowercase e)
+  - Fixed: StaticPopup_Show args - text_arg1 for %s placeholder, data as 4th param
+- **Known bug** 🐛: Remember Last Tab currently always saves last tab regardless of checkbox state
+  - Root cause: SaveLastTab() called unconditionally in hooked SetTab()
+  - Impact: Setting has no effect - tab is always remembered
+  - Fix needed: Check rememberLastTab setting before saving in hook
+- **Status**: Settings panel functional, ready for beta except for Remember Last Tab bug
+
 **Alpha Feedback Fixes & Architecture Refactoring (Feb 11)** ✅
 - **Bug fixes from alpha testing**: All critical UX issues resolved
   - ESC key closes window: Added UISpecialFrames registration in Core.lua
