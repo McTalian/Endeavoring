@@ -80,11 +80,38 @@ function Settings.Register()
 		-- Add section header
 		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("General"))
 		
-		-- Default Tab dropdown
+		-- Remember Last Tab checkbox (first, as it affects the Default Tab behavior)
+		do
+			local variable = SETTINGS_VARIABLE_PREFIX .. "REMEMBER_LAST_TAB"
+			local name = "Remember Last Tab"
+			local tooltip = "Resume where you left off, even after /reload or logout. When enabled, this overrides the Default Tab setting below."
+			
+			local function GetValue()
+				return Settings.Get().rememberLastTab
+			end
+			
+			local function SetValue(value)
+				local settings = Settings.Get()
+				settings.rememberLastTab = value
+				DB.SetSettings(settings)
+				
+				-- If disabling, clear the saved tab
+				if not value then
+					DB.SetLastSelectedTab(nil)
+				end
+			end
+			
+			local defaultValue = true
+			local setting = WoWSettings.RegisterProxySetting(category, variable,
+				WoWSettings.VarType.Boolean, name, defaultValue, GetValue, SetValue)
+			WoWSettings.CreateCheckbox(category, setting, tooltip)
+		end
+		
+		-- Default Tab dropdown (only used when Remember Last Tab is disabled)
 		do
 			local variable = SETTINGS_VARIABLE_PREFIX .. "DEFAULT_TAB"
 			local name = "Default Tab"
-			local tooltip = "Which tab to show when opening the Endeavoring frame"
+			local tooltip = "Which tab to open when 'Remember Last Tab' is disabled. This setting is ignored when remembering your last tab."
 			
 			local function GetValue()
 				return Settings.Get().defaultTab or 1
@@ -110,33 +137,6 @@ function Settings.Register()
 			WoWSettings.CreateDropdown(category, setting, GetOptions, tooltip)
 		end
 		
-		-- Remember Last Tab checkbox
-		do
-			local variable = SETTINGS_VARIABLE_PREFIX .. "REMEMBER_LAST_TAB"
-			local name = "Remember Last Tab"
-			local tooltip = "Automatically open the last tab you were viewing"
-			
-			local function GetValue()
-				return Settings.Get().rememberLastTab
-			end
-			
-			local function SetValue(value)
-				local settings = Settings.Get()
-				settings.rememberLastTab = value
-				DB.SetSettings(settings)
-				
-				-- If disabling, clear the saved tab
-				if not value then
-					DB.SetLastSelectedTab(nil)
-				end
-			end
-			
-			local defaultValue = true
-			local setting = WoWSettings.RegisterProxySetting(category, variable,
-				WoWSettings.VarType.Boolean, name, defaultValue, GetValue, SetValue)
-			WoWSettings.CreateCheckbox(category, setting, tooltip)
-		end
-		
 		-- Player Alias section
 		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Player Alias"))
 		
@@ -160,11 +160,11 @@ function Settings.Register()
 		-- Debug section
 		layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Debug"))
 		
-		-- Debug Mode checkbox
-		do
-			local variable = SETTINGS_VARIABLE_PREFIX .. "DEBUG_MODE"
-			local name = "Debug Mode"
-			local tooltip = "Enable verbose debug logging to help troubleshoot issues"
+-- Enable Debug Logs checkbox
+	do
+		local variable = SETTINGS_VARIABLE_PREFIX .. "DEBUG_MODE"
+		local name = "Enable Debug Logs"
+		local tooltip = "Show detailed debug information in chat to help troubleshoot issues"
 			
 			local function GetValue()
 				return DB.IsVerboseDebug()
@@ -177,7 +177,7 @@ function Settings.Register()
 				DB.SetSettings(settings)
 				
 				if value then
-					print(INFO .. " Debug mode enabled. Check /chatlog for detailed output.")
+					print(INFO .. " Debug mode enabled. Use /chatlog to stream logs to a file.")
 				else
 					print(INFO .. " Debug mode disabled.")
 				end
@@ -187,21 +187,6 @@ function Settings.Register()
 			local setting = WoWSettings.RegisterProxySetting(category, variable,
 				WoWSettings.VarType.Boolean, name, defaultValue, GetValue, SetValue)
 			WoWSettings.CreateCheckbox(category, setting, tooltip)
-		end
-		
-		-- Reset Settings button
-		do
-			local name = "Reset All Settings"
-			local tooltip = "Reset all Endeavoring settings to defaults"
-			
-			local function OnButtonClick()
-				-- Show confirmation dialog
-				StaticPopup_Show("ENDEAVORING_RESET_SETTINGS")
-			end
-			
-			local addSearchTags = true
-			local initializer = CreateSettingsButtonInitializer("", name, OnButtonClick, tooltip, addSearchTags)
-			layout:AddInitializer(initializer)
 		end
 		
 		-- About section
@@ -237,38 +222,6 @@ function Settings.Open()
 		print(INFO .. " Settings not yet initialized. Please try again in a moment.")
 	end
 end
-
---- Reset all settings to defaults
-function Settings.Reset()
-	DB.SetSettings({
-		defaultTab = 1,
-		rememberLastTab = true,
-		debugMode = false
-	})
-	DB.SetLastSelectedTab(nil)
-	DB.SetVerboseDebug(false)
-	
-	print(INFO .. " All settings have been reset to defaults.")
-	
-	-- Refresh the settings UI if it's open
-	if SettingsPanel:IsShown() and ns.settingsCategoryID then
-		SettingsPanel:Refresh()
-	end
-end
-
--- Register confirmation dialog for reset
-StaticPopupDialogs["ENDEAVORING_RESET_SETTINGS"] = {
-	text = "Are you sure you want to reset all Endeavoring settings to their defaults?",
-	button1 = "Reset",
-	button2 = "Cancel",
-	OnAccept = function()
-		Settings.Reset()
-	end,
-	timeout = 0,
-	whileDead = true,
-	hideOnEscape = true,
-	preferredIndex = 3,
-}
 
 -- Register dialog for setting player alias
 StaticPopupDialogs["ENDEAVORING_SET_ALIAS"] = {
