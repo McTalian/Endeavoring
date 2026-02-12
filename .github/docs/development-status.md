@@ -1,8 +1,32 @@
 # Development Status
 
-**Last Updated**: February 10, 2026
+**Last Updated**: February 11, 2026
 
 ## Recent Work 🎉
+
+**Alpha Feedback Fixes & Architecture Refactoring (Feb 11)** ✅
+- **Bug fixes from alpha testing**: All critical UX issues resolved
+  - ESC key closes window: Added UISpecialFrames registration in Core.lua
+  - Empty Tasks tab after zone change: Fixed event handling + activity log request timing
+  - Activity log loading: New caching architecture resolves flaky Blizzard API behavior
+  - "My characters only" filter stuck: Returns stale cache immediately while refreshing in background
+  - Contribution tooltips: Shows "Endeavor Complete" explanation when amount=0 and endeavor finished
+- **Major architectural refactoring**: Created Cache/ layer for clean separation of concerns
+  - New directory: Cache/ for caching orchestration (sits between Services and Data)
+  - Moved: CharacterCache from Sync/ to Cache/ (runtime lookup index, not sync-specific)
+  - Created: Cache/ActivityLogCache.lua - orchestrates get/set/refresh/event handling
+  - Restored: Services/NeighborhoodAPI.lua to pure Blizzard API wrapper (no caching logic)
+  - Added: API.GetActiveNeighborhoodGUID() and API.IsInitiativeCompleted() helpers
+  - Updated: Database.lua GetActivityLogCache() returns (cache, isStale) tuple
+  - Pattern: Services → Cache → Data for clear responsibility separation
+- **Virtual scrolling implementation**: Fixed Activity tab performance lag
+  - Smart row pooling: Only creates ~14 rows (visible area + 2 buffer) instead of all entries
+  - Dynamic positioning: Rows reposition based on data index during scroll
+  - OnVerticalScroll handler: Updates visible rows as user scrolls
+  - Performance: ~85% reduction in row operations (14 vs 100+ entries)
+  - Result: Smooth scrolling even with hundreds of activity entries
+- **Event handling improvements**: INITIATIVE_ACTIVITY_LOG_UPDATED now delegates to ActivityLogCache
+- **In-game validation**: User confirmed all fixes working, smooth performance, no lag
 
 **Activity Tab & Color Curves Exploration (Feb 10)** ✅ / 🚧
 - **Activity tab implementation**: Complete third tab showing chronological task completion log with sorting and filtering

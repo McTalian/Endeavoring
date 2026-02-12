@@ -22,7 +22,8 @@ Services/NeighborhoodAPI.lua
 Services/QuestRewards.lua
 Services/AddonMessages.lua
 Data/Database.lua
-Sync/CharacterCache.lua
+Cache/CharacterCache.lua
+Cache/ActivityLogCache.lua
 Sync/Coordinator.lua
 Sync/Gossip.lua
 Sync/Protocol.lua

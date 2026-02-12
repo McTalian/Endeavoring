@@ -105,7 +105,7 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 ## Development Status
 
 **Current Phase**: Phase 4 (In-Game Testing - Ongoing)  
-**Recent Work**: Activity tab implementation complete with sortable columns, time range filtering, multi-line player display, and task tooltips; Color Curves API (C_CurveUtil) exploration for dynamic progress bar colors (needs more iteration); fixed native dropdown implementation; player display now shows alias/BattleTag with icon on top, character on bottom
+**Recent Work**: Alpha feedback fixes complete (ESC key, caching, tooltips, virtual scrolling); Cache/ architecture refactoring for clean Services→Cache→Data separation; Virtual scrolling eliminates Activity tab lag
 
 See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 

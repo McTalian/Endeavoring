@@ -395,7 +395,7 @@ local function UpdateLeaderboardDisplay()
 
 	local leaderboardUI = ns.ui.leaderboardUI
 	local constants = ns.Constants
-	local activityLog = ns.API.GetActivityLogInfo()
+	local activityLog = ns.ActivityLogCache.Get()
 
 	-- Check if activity log is loaded (follows Blizzard's pattern)
 	if not activityLog or not activityLog.isLoaded then

@@ -33,6 +33,7 @@ local DEFAULT_DB = {
 	global = {
 		myProfile = nil,
 		profiles = {},
+		activityLogCache = {},  -- Keyed by neighborhoodGUID
 		verboseDebug = false,
 		version = 1
 	}
@@ -60,6 +61,10 @@ function DB.Init()
 	
 	if EndeavoringDB.global.verboseDebug == nil then
 		EndeavoringDB.global.verboseDebug = false
+	end
+	
+	if not EndeavoringDB.global.activityLogCache then
+		EndeavoringDB.global.activityLogCache = {}
 	end
 	
 	-- myProfile will be initialized on first character login
@@ -483,5 +488,68 @@ function DB.SetVerboseDebug(enabled)
 	end
 	
 	EndeavoringDB.global.verboseDebug = enabled
+end
+
+--------------------------------------------------------------
+-- Activity Log Cache
+--------------------------------------------------------------
+
+--- Get cached activity log for a neighborhood
+--- @param neighborhoodGUID string The neighborhood GUID
+--- @return table|nil cachedData The cached activity log info, or nil if not cached
+--- @return boolean isStale Whether the cache is stale (based on nextUpdateTime)
+function DB.GetActivityLogCache(neighborhoodGUID)
+	if not EndeavoringDB or not EndeavoringDB.global or not EndeavoringDB.global.activityLogCache then
+		return nil, false
+	end
+	
+	local cache = EndeavoringDB.global.activityLogCache[neighborhoodGUID]
+	if not cache then
+		return nil, false
+	end
+	
+	-- Check if cache is stale based on nextUpdateTime
+	local now = time()
+	if cache.nextUpdateTime and now >= cache.nextUpdateTime then
+		return cache, true  -- Cache is stale
+	end
+	
+	return cache, false
+end
+
+--- Set cached activity log for a neighborhood
+--- @param neighborhoodGUID string The neighborhood GUID
+--- @param activityLogInfo table The activity log info from the API
+function DB.SetActivityLogCache(neighborhoodGUID, activityLogInfo)
+	if not EndeavoringDB or not EndeavoringDB.global then
+		return
+	end
+	
+	if not EndeavoringDB.global.activityLogCache then
+		EndeavoringDB.global.activityLogCache = {}
+	end
+	
+	-- Store a deep copy to avoid reference issues
+	EndeavoringDB.global.activityLogCache[neighborhoodGUID] = {
+		isLoaded = activityLogInfo.isLoaded,
+		neighborhoodGUID = activityLogInfo.neighborhoodGUID,
+		nextUpdateTime = activityLogInfo.nextUpdateTime,
+		taskActivity = CopyTable(activityLogInfo.taskActivity),
+		cachedAt = time()
+	}
+end
+
+--- Clear activity log cache for a neighborhood (or all if no GUID provided)
+--- @param neighborhoodGUID string|nil The neighborhood GUID to clear, or nil to clear all
+function DB.ClearActivityLogCache(neighborhoodGUID)
+	if not EndeavoringDB or not EndeavoringDB.global or not EndeavoringDB.global.activityLogCache then
+		return
+	end
+	
+	if neighborhoodGUID then
+		EndeavoringDB.global.activityLogCache[neighborhoodGUID] = nil
+	else
+		EndeavoringDB.global.activityLogCache = {}
+	end
 end
 

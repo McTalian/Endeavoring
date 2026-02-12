@@ -190,12 +190,18 @@ local function BuildSortedActivity(activities)
 		if sortAsc then
 			if aVal == bVal then
 				-- Tie-breaker: fall back to time (newest first)
+				if a.completionTime == b.completionTime then
+					return a.amount < b.amount  -- Final tie-breaker by amount to ensure consistent order
+				end
 				return a.completionTime > b.completionTime
 			end
 			return aVal < bVal
 		else
 			if aVal == bVal then
 				-- Tie-breaker: fall back to time (newest first)
+				if a.completionTime == b.completionTime then
+					return a.amount < b.amount  -- Final tie-breaker by amount to ensure consistent order
+				end
 				return a.completionTime > b.completionTime
 			end
 			return aVal > bVal
@@ -354,12 +360,32 @@ local function CreateActivityRow(parent, index)
 	
 	row.charContainer = charContainer
 
-	-- Contribution column
-	local contribText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	contribText:SetPoint("LEFT", charContainer, "RIGHT", 0, 0)
-	contribText:SetSize(constants.ACTIVITY_CONTRIB_WIDTH, constants.ACTIVITY_ROW_HEIGHT)
+	-- Contribution column (with tooltip support)
+	local contribContainer = CreateFrame("Frame", nil, row)
+	contribContainer:SetPoint("LEFT", charContainer, "RIGHT", 0, 0)
+	contribContainer:SetSize(constants.ACTIVITY_CONTRIB_WIDTH, constants.ACTIVITY_ROW_HEIGHT)
+	contribContainer:EnableMouse(true)
+	
+	local contribText = contribContainer:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	contribText:SetAllPoints()
 	contribText:SetJustifyH("RIGHT")
 	contribText:SetWordWrap(false)
+	contribContainer.text = contribText
+	
+	-- Tooltip for 0 contribution values when endeavor is completed
+	contribContainer:SetScript("OnEnter", function(self)
+		if self.amount == 0 and ns.API.IsInitiativeCompleted() then
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText("Endeavor Complete", 1, 1, 1, 1, true)
+			GameTooltip_AddNormalLine(GameTooltip, "Contributions show as 0 after an Endeavor is completed.")
+			GameTooltip:Show()
+		end
+	end)
+	contribContainer:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+	end)
+	
+	row.contribContainer = contribContainer
 	row.contribText = contribText
 
 	return row
@@ -382,6 +408,77 @@ local function CenterCharText(row, hasProfile)
 	end
 end
 
+--- Update only the visible rows based on scroll position
+--- @param content Frame The activity content frame
+local function UpdateVisibleRows(content)
+	if not content.sortedData or #content.sortedData == 0 then
+		return
+	end
+	
+	local sorted = content.sortedData
+	local constants = ns.Constants
+	local rows = content.rows
+	
+	-- Calculate scroll offset and visible range
+	local scrollOffset = content.scrollFrame:GetVerticalScroll()
+	local firstVisibleIndex = math.floor(scrollOffset / constants.ACTIVITY_ROW_HEIGHT) + 1
+	local lastVisibleIndex = math.min(firstVisibleIndex + #rows - 1, #sorted)
+	
+	-- Update each row in the pool
+	for poolIndex = 1, #rows do
+		local dataIndex = firstVisibleIndex + poolIndex - 1
+		local row = rows[poolIndex]
+		
+		if dataIndex <= #sorted then
+			local entry = sorted[dataIndex]
+			
+			-- Position row based on its data index (not pool index)
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", 0, -(dataIndex - 1) * constants.ACTIVITY_ROW_HEIGHT)
+			
+			-- Time column
+			row.timeText:SetText(FormatRelativeTime(entry.completionTime))
+			
+			-- Task name column (with tooltip)
+			row.taskFrame.text:SetText(entry.taskName)
+			row.taskFrame.fullTaskName = entry.taskName
+			
+			-- Character/Account column
+			local battleTag = ns.CharacterCache.FindBattleTag(entry.playerName)
+			local charContainer = row.charContainer
+			
+			charContainer.charText:SetText(entry.playerName)
+			local hasProfile = false
+			if battleTag then
+				local profile = ns.DB.GetProfile(battleTag)
+				if profile and profile.alias then
+					charContainer.icon:Show()
+					charContainer.playerText:SetText(profile.alias)
+				else
+					charContainer.icon:Show()
+					charContainer.playerText:SetText(battleTag)
+				end
+				hasProfile = true
+			else
+				charContainer.icon:Hide()
+				charContainer.playerText:SetText("")
+			end
+			
+			CenterCharText(row, hasProfile)
+			
+			-- Contribution column
+			local amount = entry.amount or 0
+			row.contribContainer.amount = amount
+			row.contribText:SetText(string.format("+%.3f", amount))
+			
+			row:Show()
+		else
+			-- Hide rows beyond data range
+			row:Hide()
+		end
+	end
+end
+
 --- Update activity display with current filters
 local function UpdateActivityDisplay()
 	local content = ns.ui.activityContent
@@ -389,8 +486,8 @@ local function UpdateActivityDisplay()
 		return
 	end
 
-	-- Get activity log
-	local activityLogInfo = ns.API.GetActivityLogInfo()
+	-- Get activity log (with caching)
+	local activityLogInfo = ns.ActivityLogCache.Get()
 	if not activityLogInfo or not activityLogInfo.isLoaded then
 		-- Show empty state
 		if content.emptyText then
@@ -431,67 +528,28 @@ local function UpdateActivityDisplay()
 		content.scrollChild:Show()
 	end
 
-	-- Create or reuse rows
-	local rows = content.rows or {}
-	for i = 1, #sorted do
-		if not rows[i] then
-			rows[i] = CreateActivityRow(content.scrollChild, i)
-		end
-		rows[i]:Show()
-	end
-
-	-- Hide excess rows
-	for i = #sorted + 1, #rows do
-		rows[i]:Hide()
-	end
-
-	content.rows = rows
-
-	-- Update row content
-	for i, entry in ipairs(sorted) do
-		local row = rows[i]
-		
-		-- Time column
-		row.timeText:SetText(FormatRelativeTime(entry.completionTime))
-		
-		-- Task name column (with tooltip)
-		row.taskFrame.text:SetText(entry.taskName)
-		row.taskFrame.fullTaskName = entry.taskName  -- Store for tooltip
-		
-		-- Character/Account column (always show character on bottom)
-		local battleTag = ns.CharacterCache.FindBattleTag(entry.playerName)
-		local charContainer = row.charContainer
-		
-		-- Always show character name on bottom line
-		charContainer.charText:SetText(entry.playerName)
-		local hasProfile = false
-		if battleTag then
-			local profile = ns.DB.GetProfile(battleTag)
-			if profile and profile.alias then
-				-- Has profile: show icon + alias on top
-				charContainer.icon:Show()
-				charContainer.playerText:SetText(profile.alias)
-			else
-				-- Has BattleTag but no alias: show BattleTag on top, no icon
-				charContainer.icon:Show()
-				charContainer.playerText:SetText(battleTag)
-			end
-			hasProfile = true
-		else
-			-- No profile data: hide top line and icon, show only character
-			charContainer.icon:Hide()
-			charContainer.playerText:SetText("")
-		end
-
-		CenterCharText(row, hasProfile)
-		
-		-- Contribution column (3 decimal places for fractional values)
-		row.contribText:SetText(string.format("+%.3f", entry.amount))
-	end
-
-	-- Update scroll child height
-	local totalHeight = #sorted * ns.Constants.ACTIVITY_ROW_HEIGHT
+	-- Store sorted data for virtual scrolling
+	content.sortedData = sorted
+	
+	-- Calculate visible rows and total height
+	local constants = ns.Constants
+	local scrollFrameHeight = content.scrollFrame:GetHeight() or 400
+	local maxVisibleRows = math.ceil(scrollFrameHeight / constants.ACTIVITY_ROW_HEIGHT) + 2  -- +2 buffer
+	local totalHeight = #sorted * constants.ACTIVITY_ROW_HEIGHT
+	
+	-- Update scroll child height for proper scrollbar sizing
 	content.scrollChild:SetHeight(totalHeight)
+	
+	-- Create row pool (only enough for visible area)
+	if not content.rows then
+		content.rows = {}
+		for i = 1, maxVisibleRows do
+			content.rows[i] = CreateActivityRow(content.scrollChild, i)
+		end
+	end
+	
+	-- Initial render of visible rows
+	UpdateVisibleRows(content)
 end
 
 --- Public refresh function
@@ -614,6 +672,12 @@ function Activity.CreateTab(parent)
 	scrollFrame:SetScrollChild(scrollChild)
 	content.scrollChild = scrollChild
 	content.scrollFrame = scrollFrame
+	
+	-- Update visible rows on scroll
+	scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
+		ScrollFrame_OnVerticalScroll(self, offset)
+		UpdateVisibleRows(content)
+	end)
 
 	-- Empty state text
 	local emptyText = scrollFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

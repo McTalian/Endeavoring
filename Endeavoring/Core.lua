@@ -62,6 +62,9 @@ local function CreateMainFrame()
 	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 	frame:SetFrameStrata("DIALOG")
 	frame:SetClampedToScreen(true)
+	
+	-- Register with UISpecialFrames to allow ESC key to close
+	tinsert(UISpecialFrames, "EndeavoringFrame")
 
 	frame.header = ns.Header.Create(frame)
 	InitializeTabSystem(frame)
@@ -98,6 +101,7 @@ eventFrame:RegisterEvent("PLAYER_HOUSE_LIST_UPDATED")
 eventFrame:RegisterEvent("NEIGHBORHOOD_INITIATIVE_UPDATED")
 eventFrame:RegisterEvent("INITIATIVE_COMPLETED")
 eventFrame:RegisterEvent("INITIATIVE_TASK_COMPLETED")
+eventFrame:RegisterEvent("INITIATIVE_ACTIVITY_LOG_UPDATED")
 eventFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
 eventFrame:SetScript("OnEvent", function(_, event, ...)
 	if event == "PLAYER_ENTERING_WORLD" then
@@ -148,11 +152,18 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 	if event == "NEIGHBORHOOD_INITIATIVE_UPDATED" then
 		-- Initiative data has loaded/updated, refresh UI
 		RefreshInitiativeUI()
+		-- Also request activity log to ensure it's up to date
+		ns.API.RequestActivityLog()
 		return
 	end
 
 	if event == "INITIATIVE_COMPLETED" or event == "INITIATIVE_TASK_COMPLETED" then
 		RefreshInitiativeUI()
+	end
+	
+	if event == "INITIATIVE_ACTIVITY_LOG_UPDATED" then
+		-- Activity log has been loaded/updated
+		ns.ActivityLogCache.OnActivityLogUpdated()
 	end
 	
 	if event == "GUILD_ROSTER_UPDATE" then

@@ -24,6 +24,24 @@ function API.IsInitiativeActive()
 	return false
 end
 
+function API.IsInitiativeCompleted()
+	local info = API.GetInitiativeInfo()
+
+	if info and info.currentProgress >= info.progressRequired then
+		return true
+	end
+
+	return false
+end
+
+function API.GetActiveNeighborhoodGUID()
+	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetActiveNeighborhood then
+		return C_NeighborhoodInitiative.GetActiveNeighborhood()
+	end
+
+	return nil
+end
+
 function API.RequestInitiativeInfo()
 	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo then
 		C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo()
