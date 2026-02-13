@@ -101,3 +101,38 @@ function API.RequestPlayerHouses()
 		C_Housing.GetPlayerOwnedHouses()
 	end
 end
+
+function API.ViewActiveNeighborhood()
+	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.SetViewingNeighborhood then
+		if C_NeighborhoodInitiative.IsViewingActiveNeighborhood and C_NeighborhoodInitiative.IsViewingActiveNeighborhood() then
+			return true
+		end
+
+		DebugPrint("Setting viewing neighborhood to active neighborhood")
+
+		if C_NeighborhoodInitiative.GetActiveNeighborhood then
+			local activeNeighborhood = C_NeighborhoodInitiative.GetActiveNeighborhood()
+			if activeNeighborhood then
+				C_NeighborhoodInitiative.SetViewingNeighborhood(activeNeighborhood)
+				return true
+			end
+
+			DebugPrint("No active neighborhood found, trying fallback method")
+
+			if C_Housing and C_Housing.GetCurrentNeighborhoodGUID then
+				-- Fallback: try to find a neighborhood matching the player's current location
+				local currentNeighborhood = C_Housing.GetCurrentNeighborhoodGUID()
+				if currentNeighborhood then
+					C_NeighborhoodInitiative.SetActiveNeighborhood(currentNeighborhood)
+					C_NeighborhoodInitiative.SetViewingNeighborhood(currentNeighborhood)
+					return true
+				end
+
+				DebugPrint("No current neighborhood found from housing API")
+			end
+		end
+	end
+
+	return false
+end
+

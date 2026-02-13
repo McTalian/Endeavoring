@@ -670,6 +670,7 @@ function Activity.CreateTab(parent)
 	scrollChild:SetWidth(constants.FRAME_WIDTH - constants.SCROLLBAR_WIDTH - 40)
 	scrollChild:SetHeight(1)  -- Will be updated dynamically
 	scrollFrame:SetScrollChild(scrollChild)
+	scrollFrame.scrollChild = scrollChild
 	content.scrollChild = scrollChild
 	content.scrollFrame = scrollFrame
 	

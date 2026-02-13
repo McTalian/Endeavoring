@@ -121,6 +121,11 @@ function Coordinator.SendManifest()
 	if not myProfile then
 		return
 	end
+
+	if not ns.PlayerInfo.IsInGuild() then
+		DebugPrint("Not in a guild, skipping manifest broadcast", "ff8800")
+		return
+	end
 	
 	-- Build MANIFEST message with CBOR payload
 	local data = {

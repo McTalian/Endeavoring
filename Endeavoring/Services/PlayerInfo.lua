@@ -75,3 +75,8 @@ end
 function PlayerInfo.IsGuildOfficer()
 	return PlayerInfo.IsInGuild() and (C_GuildInfo.IsGuildOfficer() or IsGuildLeader())
 end
+
+function PlayerInfo.IsInNeighborhoodInstance()
+	local inInstance, instanceType = IsInInstance()
+	return inInstance and instanceType == "neighborhood"
+end

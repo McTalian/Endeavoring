@@ -1,8 +1,48 @@
 # Development Status
 
-**Last Updated**: February 11, 2026
+**Last Updated**: February 12, 2026
 
 ## Recent Work 🎉
+
+**Critical Bug Fix + Settings Access (Feb 12 PM)** ✅
+- **Housing Dashboard Corruption Fix**: Resolved critical issue where Housing Dashboard showed blank Endeavors tab after zone transitions
+  - Issue: Force-loading addon during PLAYER_ENTERING_WORLD caused initialization conflicts
+  - Root cause: Missing "viewing neighborhood" context required by initiative API
+  - Solution: Added ViewActiveNeighborhood() to set proper context before data requests
+  - Solution: Delayed RequestPlayerHouses() with RunNextFrame() to avoid race conditions
+  - Solution: Removed force-loading from zone transitions (rely on ADDON_LOADED event only)
+  - Files: Core.lua (lines 183-184), Services/NeighborhoodAPI.lua (lines 105-137)
+  - Result: No more blank Housing Dashboard, no more "try opening housing dashboard" errors
+- **Settings Gear Button**: Added convenient settings access to main frame
+  - Button positioned next to close button in frame header
+  - Uses WoW's common-dropdown settings atlas (shadowless variant)
+  - Click handler opens settings panel via ns.Settings.Open()
+  - Tooltip: "Settings - Open Endeavoring settings panel"
+  - File: Core.lua (lines 89-108)
+- **Status**: Critical stability fix complete, addon ready for beta release
+
+**Settings Panel UX Refinements (Feb 12 AM)** ✅ / 📋
+- **Tab settings improvements**: Reordered for better UX clarity
+  - Moved "Remember Last Tab" checkbox ABOVE "Default Tab" dropdown
+  - Enhanced tooltips explaining relationship between settings
+  - Remember Last Tab: "Resume where you left off, even after /reload or logout. When enabled, this overrides the Default Tab setting below."
+  - Default Tab: "Which tab to open when 'Remember Last Tab' is disabled. This setting is ignored when remembering your last tab."
+- **Debug section cleanup**: Improved clarity and removed redundancy
+  - Renamed: "Debug Mode" → "Enable Debug Logs" with clearer tooltip
+  - Removed: "Reset All Settings" button (redundant with WoW's built-in Defaults button)
+- **Alias display exploration** 📋: Investigated dynamic alias text display
+  - Attempted: Static label + dynamic value FontString approach
+  - Attempted: SettingsListElementTemplate with custom initializers
+  - Issue: WoW Settings API has complex initialization patterns (cbrHandles, etc.)
+  - Issue: No built-in support for dynamic text updates without panel refresh
+  - Decision: Deferred dynamic updates to future Ace 3.0 migration
+  - Current state: Button-only approach, users must reopen panel to see alias changes
+- **Key insights**:
+  - WoW's native Settings API is very limited for custom/dynamic content
+  - SettingsListElementTemplate requires specific callback structures not well documented
+  - Custom frame creation within Settings API is fragile and error-prone
+  - Ace 3.0 (AceConfig/AceGUI) will provide better control for advanced UI needs
+- **Status**: Settings panel stable and functional, cosmetic improvements deferred
 
 **Settings Panel Implementation (Feb 11)** ✅ / 🐛
 - **New settings panel**: Complete integration with WoW's modern Settings API for beta release

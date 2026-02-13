@@ -104,8 +104,8 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Phase 4 (In-Game Testing - Ongoing)  
-**Recent Work**: Settings panel implementation complete (tab preferences, alias management, debug mode, about section with attributions); Known issue with "Remember Last Tab" always saving regardless of setting - pending fix
+**Current Phase**: Beta Release Candidate  
+**Recent Work**: Critical bug fix (Feb 12) - resolved Housing Dashboard corruption on zone transitions via viewing neighborhood context; Added settings gear button to main frame for easier access; Ready for beta release
 
 See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 

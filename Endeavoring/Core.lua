@@ -85,6 +85,29 @@ local function CreateMainFrame()
 	
 	-- Register with UISpecialFrames to allow ESC key to close
 	tinsert(UISpecialFrames, "EndeavoringFrame")
+	
+	-- Settings gear button next to close button
+	local settingsButton = CreateFrame("Button", nil, frame)
+	settingsButton:SetFrameLevel(EndeavoringFrameCloseButton:GetFrameLevel())
+	settingsButton:SetSize(24, 24)
+	settingsButton:SetPoint("RIGHT", EndeavoringFrameCloseButton, "LEFT", 0, -2)
+	settingsButton:SetNormalAtlas("common-dropdown-a-button-settings-open-shadowless")
+	settingsButton:SetPushedAtlas("common-dropdown-a-button-settings-pressedhover-shadowless")
+	settingsButton:SetHighlightAtlas("common-dropdown-a-button-settings-hover-shadowless", "ADD")
+	settingsButton:SetScript("OnClick", function()
+		if ns.Settings and ns.Settings.Open then
+			ns.Settings.Open()
+		end
+	end)
+	settingsButton:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip_SetTitle(GameTooltip, "Settings")
+		GameTooltip_AddNormalLine(GameTooltip, "Open Endeavoring settings panel")
+		GameTooltip:Show()
+	end)
+	settingsButton:SetScript("OnLeave", GameTooltip_Hide)
+	settingsButton:Show()
+	frame.settingsButton = settingsButton
 
 	frame.header = ns.Header.Create(frame)
 	InitializeTabSystem(frame)
@@ -144,13 +167,10 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
 		end
 		
 		ns.Commands.Register()
-		local housingDash = ns.Integrations.HousingDashboard
-		if housingDash.EnsureLoaded() then
-			housingDash.RegisterButtonHook()
-		end
+
+		ns.API.ViewActiveNeighborhood()
+		RunNextFrame(function() ns.API.RequestPlayerHouses() end)
 		
-		-- Request housing data first (required for initiative system)
-		ns.API.RequestPlayerHouses()
 		return
 	end
 
