@@ -44,12 +44,12 @@
   - Ace 3.0 (AceConfig/AceGUI) will provide better control for advanced UI needs
 - **Status**: Settings panel stable and functional, cosmetic improvements deferred
 
-**Settings Panel Implementation (Feb 11)** ✅ / 🐛
+**Settings Panel Implementation (Feb 11)** ✅
 - **New settings panel**: Complete integration with WoW's modern Settings API for beta release
   - Created: Features/Settings.lua - full settings panel using RegisterVerticalLayoutCategory
   - Sections: General, Player Alias, Debug, About
   - Default Tab dropdown: Choose Tasks, Leaderboard, or Activity as startup tab
-  - Remember Last Tab checkbox: Resume where you left off on /reload (has known bug - see below)
+  - Remember Last Tab checkbox: Resume where you left off on /reload
   - Change Player Alias button: Set custom display name via StaticPopup dialog with edit box
   - Debug Mode checkbox: Enable verbose logging for troubleshooting
   - Reset All Settings button: Reset to defaults with confirmation dialog
@@ -69,11 +69,7 @@
   - Fixed: CreateSettingsButtonInitializer is global function, not Settings.CreateButton
   - Fixed: StaticPopup field is EditBox (capital E), not editBox (lowercase e)
   - Fixed: StaticPopup_Show args - text_arg1 for %s placeholder, data as 4th param
-- **Known bug** 🐛: Remember Last Tab currently always saves last tab regardless of checkbox state
-  - Root cause: SaveLastTab() called unconditionally in hooked SetTab()
-  - Impact: Setting has no effect - tab is always remembered
-  - Fix needed: Check rememberLastTab setting before saving in hook
-- **Status**: Settings panel functional, ready for beta except for Remember Last Tab bug
+- **Status**: Settings panel functional, ready for beta
 
 **Alpha Feedback Fixes & Architecture Refactoring (Feb 11)** ✅
 - **Bug fixes from alpha testing**: All critical UX issues resolved

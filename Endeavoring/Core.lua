@@ -68,8 +68,6 @@ local function RefreshInitiativeUI()
 end
 
 local function CreateMainFrame()
-	-- TODO: Use PortraitFrameTemplate
-
 	local frame = CreateFrame("Frame", "EndeavoringFrame", UIParent, "PortraitFrameTemplate")
 	frame.TitleContainer.TitleText:SetText(addonName)
 	frame:SetPortraitToAsset("Interface/AddOns/Endeavoring/Icons/endeavoring_panel_portrait.png")

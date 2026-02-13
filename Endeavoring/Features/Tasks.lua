@@ -117,8 +117,6 @@ local function SetSort(sortKey)
 end
 
 local function CreateTaskRow(parent, index)
-	-- TODO: Make columns sortable (Contribution, House XP, Coupons)
-	
 	local constants = ns.Constants
 	local row = CreateFrame("Button", nil, parent)
 	parent["row" .. index] = row
@@ -208,6 +206,36 @@ local function CreateTaskRow(parent, index)
 	row.couponsIcon:SetSize(16, 16)
 	row.couponsIcon:SetPoint("CENTER", row.coupons, "CENTER", -20, 0)
 
+	-- Register for clicks to support shift-click tracking
+	row:RegisterForClicks("LeftButtonUp")
+	row:SetScript("OnClick", function(self)
+		if not self.data or not self.data.ID then
+			return
+		end
+		
+		if IsModifiedClick("QUESTWATCHTOGGLE") then
+			-- Shift-click to track/untrack
+			local trackedTasks = C_NeighborhoodInitiative.GetTrackedInitiativeTasks()
+			local isTracked = false
+			if trackedTasks and trackedTasks.trackedIDs then
+				for _, trackedID in ipairs(trackedTasks.trackedIDs) do
+					if trackedID == self.data.ID then
+						isTracked = true
+						break
+					end
+				end
+			end
+			
+			if isTracked then
+				C_NeighborhoodInitiative.RemoveTrackedInitiativeTask(self.data.ID)
+			else
+				C_NeighborhoodInitiative.AddTrackedInitiativeTask(self.data.ID)
+			end
+			
+			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+		end
+	end)
+	
 	row:SetScript("OnEnter", function(self)
 		if not self.data then
 			return
@@ -236,6 +264,9 @@ local function CreateTaskRow(parent, index)
 			GameTooltip_AddBlankLineToTooltip(GameTooltip)
 			GameTooltip_AddQuestRewardsToTooltip(GameTooltip, self.data.rewardQuestID, TOOLTIP_QUEST_REWARDS_STYLE_INITIATIVE_TASK)
 		end
+		
+		GameTooltip_AddBlankLineToTooltip(GameTooltip)
+		GameTooltip_AddInstructionLine(GameTooltip, "Shift-click to track task")
 		
 		GameTooltip:Show()
 	end)
