@@ -760,6 +760,32 @@ Codebase is clean and well-organized:
 
 ### Future Enhancements
 
+**Auto-Track Tasks on Progress** (Requested Feb 12):
+- Automatically track tasks in objective tracker when player makes progress on them
+- Detect when task progress changes (e.g., requirement completion count increases)
+- Use deep table comparison (`tCompare`) to diff previous vs current task state
+- Compare `task.requirementsList` with depth=3 to detect requirement text/count changes
+- **Implementation approach**:
+  ```lua
+  -- Cache current task state
+  local cachedTasks = CopyTable(initiativeInfo.tasks)
+  
+  -- On NEIGHBORHOOD_INITIATIVE_UPDATED, compare:
+  for i, task in ipairs(newInfo.tasks) do
+    if not tCompare(task, cachedTasks[i], 4) then
+      if not tCompare(task.requirementsList, cachedTasks[i].requirementsList, 3) then
+        -- Progress detected! Auto-track:
+        C_NeighborhoodInitiative.AddTrackedInitiativeTask(task.ID)
+      end
+    end
+  end
+  ```
+- **Challenges**: 
+  - No dedicated event for task progress (must poll on NEIGHBORHOOD_INITIATIVE_UPDATED)
+  - Need to cache full task state between updates
+  - Must differentiate progress changes from other data updates
+- **Status**: Prototype proven viable (Feb 12) - post-beta feature
+
 **Task Grouping & Smart Filtering** (Requested Feb 10):
 - Group/filter tasks by location type: "In the Neighborhood", "In the Related Zone", "End Game"
 - Help players find relevant tasks efficiently based on where they want to play
