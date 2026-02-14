@@ -4,6 +4,8 @@
 module.exports = async ({
   github,
   context,
+  hasStandard = true,
+  hasNoLib = true,
   noLibUrl,
   libsUrl,
   latestReleaseStandardSize,
@@ -49,10 +51,26 @@ module.exports = async ({
   });
 
   let commentBody = `${commentIdentifier}\n\n`;
-  commentBody += `| Package | Size | ${hasReleases ? 'Change' : 'Status'} |\n`;
-  commentBody += `|---------|------|${hasReleases ? '--------' : '--------'}|\n`;
-  commentBody += `| [With Libraries](${libsUrl}) | ${standardChange.text} | ${standardChange.emoji} ${hasReleases ? standardChange.detailed : standardChange.detailed} |\n`;
-  commentBody += `| [NoLib](${noLibUrl}) | ${nolibChange.text} | ${nolibChange.emoji} ${hasReleases ? nolibChange.detailed : nolibChange.detailed} |\n\n`;
+  
+  // If neither package type exists, show an error message
+  if (!hasStandard && !hasNoLib) {
+    commentBody += `⚠️ No package files were generated. Check the workflow logs for errors.\n\n`;
+  } else {
+    commentBody += `| Package | Size | ${hasReleases ? 'Change' : 'Status'} |\n`;
+    commentBody += `|---------|------|${hasReleases ? '--------' : '--------'}|\n`;
+    
+    if (hasStandard) {
+      const label = hasNoLib ? 'With Libraries' : 'Package';
+      commentBody += `| [${label}](${libsUrl}) | ${standardChange.text} | ${standardChange.emoji} ${standardChange.detailed} |\n`;
+    }
+    
+    if (hasNoLib) {
+      commentBody += `| [NoLib](${noLibUrl}) | ${nolibChange.text} | ${nolibChange.emoji} ${nolibChange.detailed} |\n`;
+    }
+    
+    commentBody += `\n`;
+  }
+  
   commentBody += `*Last Updated: ${lastUpdated} (UTC)*`;
 
   const { data: comments } = await github.rest.issues.listComments({
