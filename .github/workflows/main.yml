@@ -1,0 +1,78 @@
+name: Main
+
+on:
+  push:
+    branches:
+      - main
+      - ([0-9]+)?(.{([0-9]+),x}).x # 1.x, 1.2.x, 1.x.x
+
+permissions: {}
+
+jobs:
+  i18n_translations:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # - name: Set up uv
+      #   uses: astral-sh/setup-uv@v6
+      #   with:
+      #     enable-cache: true
+
+      # - name: Sync uv environment
+      #   run: uv sync
+
+      # - name: Run translation check script
+      #   run: uv run .scripts/missing_translation_check.py
+
+      # - name: Create or Update Issues
+      #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      #   run: uv run .scripts/create_or_update_i18n_issues.py
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  run_tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: Add automated tests
+      # When tests are added, run them here
+
+
+  release:
+    needs: [run_tests, i18n_translations]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+        run: npm run semantic-release

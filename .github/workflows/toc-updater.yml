@@ -1,0 +1,41 @@
+name: Update TOC Interface version(s)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 12 * * *
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v4
+
+      - name: Update TOC Interface version
+        uses: Mctalian/wow-build-tools/toc/update@v1-beta
+        with:
+          args: -a Endeavoring -b -p
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GH_PAT }}
+          title: "toc: bump versions, please submit any bugs"
+          body: |
+            ## Requirements
+
+            - [ ] Download test package in the comments below
+            - [ ] Test for all applicable game clients
+              - [ ] Retail
+              - [ ] Retail PTR
+
+            ----------------------------------------------------
+            _This PR was automatically created to update the supported interface versions in Endeavoring.toc._
+          commit-message: "toc: bump versions, please submit any bugs"
+          branch: interface-version
+          delete-branch: true

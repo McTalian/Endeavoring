@@ -7,8 +7,8 @@
 ## IconTexture: Interface/AddOns/Endeavoring/Icons/endeavoring.png
 ## X-GitHub: https://github.com/McTalian/Endeavoring
 ## X-Discord: https://discord.gg/czRYVWhe33
-## X-Curse-Project-ID: 
-## X-WoWI-ID: 
+## X-Curse-Project-ID: 1461872
+## X-WoWI-ID: 27047
 ## X-Wago-ID: 
 
 #@no-lib-strip@

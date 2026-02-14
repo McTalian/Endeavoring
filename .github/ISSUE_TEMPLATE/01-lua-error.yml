@@ -1,0 +1,88 @@
+name: Lua Error Report
+description: Create a report to help us fix a lua error in the project.
+title: "[ERROR]: "
+labels:
+  - lua error
+assignees:
+  - McTalian
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a lua error! Please fill out the details below so we can investigate the issue.
+
+  - type: checkboxes
+    id: flavor
+    attributes:
+      label: Game Flavor
+      description: Which game flavor(s) does this error occur in? (Check all that you are aware of)
+      options:
+        - label: Retail
+        - label: Cataclysm Classic
+        - label: Classic Era (Vanilla)
+        - label: Classic Era, Season of Discovery
+        - label: Classic Era 20th Anniversary (Vanilla)
+        - label: Other (please specify in additional information section)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: locale
+    attributes:
+      label: Game Locale
+      description: Which game locale(s) does this error occur in? (Check all that you are aware of)
+      options:
+        - label: enUS
+        - label: enGB
+        - label: deDE
+        - label: frFR
+        - label: esES
+        - label: esMX
+        - label: ptBR
+        - label: ptPT
+        - label: ruRU
+        - label: koKR
+        - label: zhCN
+        - label: zhTW
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ndvrng-version
+    attributes:
+      label: NDVRNG Version
+      description: Which version of Endeavoring did you encounter this error?
+      options:
+        - label: I am using the latest version from CurseForge, Wago, WoWInterface, or GitHub.
+        - label: I am using an older version (please specify in additional information section)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Did this occur when you logged in? When you opened the Housing Dashboard? Does it only occur when you have certain options configured?
+      placeholder: |
+        1. Open Housing Dashboard
+        2. Navigate to Endeavors tab
+        3. Click on Endeavoring button
+        4. Lua error is raised
+    validations:
+      required: true
+
+  - type: textarea
+    id: lua-error
+    attributes:
+      label: Lua Error
+      description: Please paste the lua error that was raised.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-information
+    attributes:
+      label: Additional Information
+      description: Any additional context, game flavors, Endeavoring version(s), screenshots, or logs.
+      placeholder: Add any other context about the problem here.
