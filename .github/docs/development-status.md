@@ -1,12 +1,25 @@
 # Development Status
 
-**Last Updated**: February 13, 2026
+**Last Updated**: February 14, 2026
 
 ## Current Phase: Beta Testing 🧪
 
 **Status**: Beta released to guild (Feb 12), preparing for v1.0.0 release
 
 ## Recent Work 🎉
+
+**Chest Ready Indicator - Experimental (Feb 14)** 🧪
+- **Feature**: Added glowing chest icon indicator when endeavor is complete but chest hasn't been looted
+  - Visual indicator: Pulsing chest icon below frame title
+  - Uses `C_QuestLog.ReadyForTurnIn()` API to detect claimable chest
+  - Tooltip explains reward is available in Housing Dashboard
+  - Implementation files: Core.lua (UI), Header.lua (logic)
+- **Status**: Experimental - cannot be tested until next endeavor cycle (March)
+  - `IsQuestFlaggedCompleted` API unreliable for endeavor chest tracking
+  - `ReadyForTurnIn` untested but appears to be correct approach
+  - May require adjustment based on real-world testing
+- **Why experimental**: Weekly housing XP cap proved too complex to track reliably (requires parsing activity log with "reward floor" calculations), pivoted to simpler chest reminder feature
+- **Blizzard UI improvements coming**: Jan 27 blue post announced Blizzard will add XP cap info to their UI in future update - smart to wait and leverage their implementation rather than build fragile heuristics
 
 **v1.0.0 Preparation (Feb 13)** ✅
 - **Distribution & Packaging**: Finalized workflows and documentation for public release
@@ -816,15 +829,24 @@ Codebase is clean and well-organized:
 - Complement the aggregated leaderboard view with individual character insights
 - Help players understand their play patterns across alts
 
-**Housing XP Cap Progress Bar** (Requested Feb 10):
+**Housing XP Cap Progress Bar** (Requested Feb 10) - **Deferred**:
 - Display progress toward housing XP cap (2250 from activities + 250 from chest)
 - Visual indicator of how much more XP you can earn this period
 - Helps players optimize their time and avoid wasting effort on capped rewards
+- **Investigation (Feb 14)**: No direct API available - requires parsing activity log and calculating "reward floors" per activity type
+  - Other addons use complex heuristics and calculations that are fragile and difficult to maintain
+  - Weekly cap may be tracked as a hidden currency, but not found in accessible currency APIs
+  - **Decision**: Too complex for the value provided, deferred indefinitely
 
-**Endeavor Completion Alert** (Requested Feb 10):
+**Endeavor Completion Alert** (Requested Feb 10) - **Implemented 🧪**:
 - Alert/notification if endeavor is complete but chest hasn't been looted
 - Reminder for easy 250 housing XP that players might forget
 - Prevent missing out on reward before endeavor period ends
+- **Status (Feb 14)**: Implemented as experimental feature
+  - Uses `C_QuestLog.ReadyForTurnIn()` to detect claimable chest reward
+  - Visual: Glowing chest icon below frame title with tooltip
+  - **Testing required**: Cannot validate until next endeavor cycle (March 2026)
+  - May need adjustments based on real-world behavior
 
 **True "All Time" Tracking** (Idea - Feb 10):
 - Currently "Current Endeavor" filter shows data for active endeavor only (Blizzard API limitation)

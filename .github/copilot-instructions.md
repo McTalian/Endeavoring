@@ -106,10 +106,11 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 **Current Phase**: Beta Testing (released Feb 12)  
 **Recent Work**: 
+- **Feb 14**: Experimental chest ready indicator - glowing icon when endeavor complete but chest unclaimed (untested until March)
 - **Feb 13**: v1.0.0 prep - updated distribution links, finalized packaging workflows, removed last TODO from codebase
 - **Feb 12**: Critical bug fix - resolved Housing Dashboard corruption on zone transitions; Added settings gear button to main frame
 
-**Next**: Gather beta feedback, release v1.0.0
+**Next**: Gather beta feedback, validate chest indicator in March, release v1.0.0
 
 See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 

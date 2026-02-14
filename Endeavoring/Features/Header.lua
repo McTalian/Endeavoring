@@ -78,6 +78,45 @@ function Header.Create(parent)
 	header.milestoneList = CreateFrame("Frame", nil, header)
 	header.milestoneList:SetPoint("TOPRIGHT", header, "TOPRIGHT", -10, -4)
 	header.milestoneList:SetSize(260, 90) -- Wide enough for overflow column if needed
+
+	-- Chest ready indicator (experimental feature)
+	-- Shows when endeavor is complete and chest hasn't been looted
+	local chestIndicator = CreateFrame("Frame", nil, header)
+	header.chestIndicator = chestIndicator
+	chestIndicator:SetSize(24, 24)
+	chestIndicator:SetPoint("LEFT", header.infoIcon, "RIGHT", 0, 0)
+	
+	-- Chest icon
+	chestIndicator.icon = chestIndicator:CreateTexture(nil, "ARTWORK")
+	chestIndicator.icon:SetAllPoints()
+	chestIndicator.icon:SetAtlas("BonusLoot-Chest")
+	
+	-- Glow animation group
+	local animGroup = chestIndicator:CreateAnimationGroup()
+	animGroup:SetLooping("REPEAT")
+	
+	-- Pulse alpha animation
+	local alpha = animGroup:CreateAnimation("Alpha")
+	alpha:SetFromAlpha(1.0)
+	alpha:SetToAlpha(0.3)
+	alpha:SetDuration(1.0)
+	alpha:SetSmoothing("IN_OUT")
+	
+	chestIndicator.animGroup = animGroup
+	
+	-- Tooltip
+	chestIndicator:EnableMouse(true)
+	chestIndicator:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+		GameTooltip_SetTitle(GameTooltip, "Endeavor Chest Ready!")
+		GameTooltip_AddNormalLine(GameTooltip, "Visit the chest next to the neighborhood bulletin board to claim your reward.")
+		GameTooltip_AddBlankLineToTooltip(GameTooltip)
+		GameTooltip_AddColoredLine(GameTooltip, "This is an experimental feature and may not work as expected.", YELLOW_FONT_COLOR)
+		GameTooltip:Show()
+	end)
+	chestIndicator:SetScript("OnLeave", GameTooltip_Hide)
+	
+	chestIndicator:Hide() -- Hidden until chest is ready
 	
 	-- Milestone entries (created dynamically during refresh)
 	header.milestones = {}
@@ -106,6 +145,7 @@ function Header.Refresh()
 		for _, milestone in pairs(header.milestones) do
 			milestone:Hide()
 		end
+		Header.UpdateChestIndicator(mainFrame, nil)
 		return
 	end
 
@@ -142,6 +182,9 @@ function Header.Refresh()
 				milestone:Hide()
 			end
 		end
+		
+		-- Update chest indicator (experimental)
+		Header.UpdateChestIndicator(mainFrame, initiativeInfo)
 	else
 		header.title:SetText(constants.NO_TASK_DATA)
 		header.timeRemaining:SetText(constants.TIME_REMAINING_FALLBACK)
@@ -152,6 +195,7 @@ function Header.Refresh()
 		for _, milestone in pairs(header.milestones) do
 			milestone:Hide()
 		end
+		Header.UpdateChestIndicator(mainFrame, nil)
 	end
 end
 
@@ -263,5 +307,65 @@ function Header.UpdateMilestones(header, milestones, currentProgress, maxProgres
 	-- Hide unused entries
 	for i = #milestones + 1, #header.milestones do
 		header.milestones[i]:Hide()
+	end
+end
+
+--- Update chest ready indicator (experimental feature)
+--- Shows a glowing chest icon when the final milestone is complete but the chest hasn't been looted
+--- @param mainFrame table The main Endeavoring frame
+--- @param initiativeInfo table|nil Initiative info from API, or nil if no active endeavor
+function Header.UpdateChestIndicator(mainFrame, initiativeInfo)
+	if not mainFrame or not mainFrame.header or not mainFrame.header.chestIndicator then
+		return
+	end
+	
+	local chestIndicator = mainFrame.header.chestIndicator
+	
+	-- Early exit if no active initiative
+	if not initiativeInfo or not initiativeInfo.milestones or #initiativeInfo.milestones == 0 then
+		chestIndicator:Hide()
+		chestIndicator.animGroup:Stop()
+		return
+	end
+	
+	-- Get final milestone (the chest reward)
+	local finalMilestone = initiativeInfo.milestones[#initiativeInfo.milestones]
+	if not finalMilestone or not finalMilestone.rewards or #finalMilestone.rewards == 0 then
+		chestIndicator:Hide()
+		chestIndicator.animGroup:Stop()
+		return
+	end
+	
+	-- Check if final milestone is complete
+	local currentProgress = initiativeInfo.currentProgress or 0
+	local isComplete = currentProgress >= finalMilestone.requiredContributionAmount
+	
+	if not isComplete then
+		chestIndicator:Hide()
+		chestIndicator.animGroup:Stop()
+		return
+	end
+	
+	-- Check if chest has been looted using ReadyForTurnIn
+	local chestQuestID = finalMilestone.rewards[1].rewardQuestID
+	if not chestQuestID or chestQuestID == 0 then
+		chestIndicator:Hide()
+		chestIndicator.animGroup:Stop()
+		return
+	end
+	
+	-- Safe call to ReadyForTurnIn (returns nil if quest doesn't exist or n/a)
+	local isReadyForTurnIn = nil
+	if C_QuestLog and C_QuestLog.ReadyForTurnIn then
+		isReadyForTurnIn = C_QuestLog.ReadyForTurnIn(chestQuestID)
+	end
+
+	-- Show indicator if chest is ready to loot
+	if isReadyForTurnIn == true then
+		chestIndicator:Show()
+		chestIndicator.animGroup:Play()
+	else
+		chestIndicator:Hide()
+		chestIndicator.animGroup:Stop()
 	end
 end
