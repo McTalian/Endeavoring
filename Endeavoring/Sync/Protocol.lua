@@ -373,11 +373,13 @@ function Protocol.OnAddonMessage(prefix, message, channel, sender)
 		return
 	end
 
-	-- TODO: We can probably short circuit on our own messages here
-	-- but they are helpful for early testing.
-	-- Consider setting a "senderMe" var at early lifecycle of the
-	-- addon so that we can compare here and ignore our own messages.
-	-- Probably wrap it in an @alpha@ block to aid with future testing.
+	--[===[@non-alpha@
+	-- Ignore our own messages in release builds (helpful for testing in alpha)
+	local playerName = UnitName("player")
+	if sender == playerName then
+		return
+	end
+	--@end-non-alpha@]===]
 	
 	local messageType, data = ParseMessage(message)
 	if not messageType or not data then

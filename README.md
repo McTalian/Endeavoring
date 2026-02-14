@@ -17,16 +17,19 @@ All your characters are automatically grouped under your player alias (or Battle
 
 ## Installation
 
+### Via Addon Manager (Recommended)
+
+Install directly through your favorite addon manager:
+- **CurseForge App**: Search for "Endeavoring"
+- **Wago App**: Search for "Endeavoring"  
+- **WoWUp**: Add from CurseForge or Wago
+
 ### Manual Install
 
-1. Download the latest release
+1. Download the latest release from [GitHub Releases](https://github.com/McTalian/Endeavoring/releases), [CurseForge](https://www.curseforge.com/wow/addons/endeavoring), [WoWInterface](https://www.wowinterface.com/downloads/info27047-Endeavoring.html), or [Wago](https://addons.wago.io/addons/endeavoring)
 2. Extract to `World of Warcraft/_retail_/Interface/AddOns/`
 3. Make sure the folder is named `Endeavoring`
 4. Restart WoW or `/reload`
-
-### Via Addon Manager
-
-Coming soon once published to CurseForge/Wago.
 
 ## Usage
 

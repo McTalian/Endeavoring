@@ -1,8 +1,26 @@
 # Development Status
 
-**Last Updated**: February 12, 2026
+**Last Updated**: February 13, 2026
+
+## Current Phase: Beta Testing 🧪
+
+**Status**: Beta released to guild (Feb 12), preparing for v1.0.0 release
 
 ## Recent Work 🎉
+
+**v1.0.0 Preparation (Feb 13)** ✅
+- **Distribution & Packaging**: Finalized workflows and documentation for public release
+  - Updated README.md with all distribution links (CurseForge, Wago, WoWInterface, GitHub)
+  - Enhanced PR checks workflow to handle repos without releases (new repo tolerance)
+  - Enhanced PR checks workflow to handle repos without library configs (single-package tolerance)
+  - Updated Discord webhook and PR comment scripts for better package size reporting
+  - Cleaned up RPGLootFeed references from workflow templates
+  - Updated issue templates with Endeavoring-relevant examples
+- **Code cleanup**: Removed last TODO from codebase
+  - Protocol.lua: Added `--@non-alpha@` block to ignore own messages in release builds
+  - Keeps message processing in alpha builds for testing/debugging
+  - Minor performance optimization and cleaner debug output
+- **Status**: Ready for v1.0.0 release, awaiting beta feedback
 
 **Critical Bug Fix + Settings Access (Feb 12 PM)** ✅
 - **Housing Dashboard Corruption Fix**: Resolved critical issue where Housing Dashboard showed blank Endeavors tab after zone transitions
