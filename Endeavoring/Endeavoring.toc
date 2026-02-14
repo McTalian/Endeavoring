@@ -9,7 +9,7 @@
 ## X-Discord: https://discord.gg/czRYVWhe33
 ## X-Curse-Project-ID: 1461872
 ## X-WoWI-ID: 27047
-## X-Wago-ID: 
+## X-Wago-ID: ZKbxy9N1
 
 #@no-lib-strip@
 #embeds.xml
