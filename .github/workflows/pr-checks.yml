@@ -70,12 +70,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          nolib_size=$(gh release view --json assets -q '.assets[] | select(.name | endswith("nolib.zip")) | .size')
-          echo "NoLibSize: $nolib_size"
-          lib_size=$(gh release view --json assets -q '.assets[] | select(.name | endswith(".zip")) | select(.name | contains("-nolib") | not) | .size')
-          echo "LibSize: $lib_size"
-          echo "LATEST_RELEASE_NOLIB_SIZE=$nolib_size" >> $GITHUB_OUTPUT
-          echo "LATEST_RELEASE_LIBS_SIZE=$lib_size" >> $GITHUB_OUTPUT
+          # Check if any releases exist
+          if gh release list --limit 1 | grep -q .; then
+            nolib_size=$(gh release view --json assets -q '.assets[] | select(.name | endswith("nolib.zip")) | .size')
+            lib_size=$(gh release view --json assets -q '.assets[] | select(.name | endswith(".zip")) | select(.name | contains("-nolib") | not) | .size')
+            echo "NoLibSize: $nolib_size"
+            echo "LibSize: $lib_size"
+            echo "LATEST_RELEASE_NOLIB_SIZE=$nolib_size" >> $GITHUB_OUTPUT
+            echo "LATEST_RELEASE_LIBS_SIZE=$lib_size" >> $GITHUB_OUTPUT
+          else
+            echo "No releases found, setting sizes to 0"
+            echo "LATEST_RELEASE_NOLIB_SIZE=0" >> $GITHUB_OUTPUT
+            echo "LATEST_RELEASE_LIBS_SIZE=0" >> $GITHUB_OUTPUT
+          fi
 
       - name: Package
         uses: McTalian/wow-build-tools@v1-beta
