@@ -72,34 +72,75 @@ This layered approach ensures workflows have just the right context without over
 
 ---
 
-### 📋 `/plan [feature]` - Feature Planning
+### 📋 `/plan #issue` - Feature Planning from GitHub Issue
 
-**Purpose**: Collaboratively design new features with technical analysis.
+**Purpose**: Transform a GitHub issue into a detailed technical implementation plan.
 
 **When to use**:
-- Starting work on a new feature
-- Exploring technical approaches
-- Breaking down complex work
-- Making architectural decisions
+- Before implementing any new feature or enhancement
+- When breaking down complex work from an issue
+- To create a clear technical roadmap before coding
+- As the first step in the issue-based development workflow
 
 **How it works**:
-1. Explores the problem space and user needs
-2. Analyzes technical approaches and trade-offs
-3. Identifies dependencies and edge cases
-4. Creates step-by-step implementation roadmap
-5. Generates technical design documentation
+1. Requires GitHub issue number (e.g., `#123`)
+2. Loads issue content via GitHub API (title, description, labels, comments)
+3. Analyzes technical approaches and trade-offs
+4. Identifies dependencies and edge cases
+5. Creates step-by-step implementation roadmap
+6. Generates technical design documentation
+7. **Saves plan** to `.github/plans/issue-{number}.md` for `/implement` to use
 
 **Example**:
 ```
-/plan Add leaderboard UI panel to Housing Dashboard
+/plan #42
 ```
 
 **Output**:
-- Problem and solution analysis
+- Problem and solution analysis from issue requirements
 - Technical approach with trade-offs
 - Dependency identification
-- Implementation roadmap
+- Implementation roadmap with phases
 - Architecture diagrams (if applicable)
+- Saved plan document at `.github/plans/issue-42.md`
+
+**Note**: Create the GitHub issue first at https://github.com/McTalian/Endeavoring/issues/new/choose
+
+---
+
+### ⚙️ `/implement #issue` - Issue-Based Implementation
+
+**Purpose**: Implement a feature from a GitHub issue with automatic plan integration.
+
+**When to use**:
+- Executing work from a well-defined GitHub issue
+- Following an implementation plan from `/plan`
+- Converting issue requirements into working code
+
+**How it works**:
+1. Loads issue content via GitHub API
+2. Checks for existing plan document (`.github/plans/issue-{number}.md`)
+3. If no plan exists, offers to create one or implement directly
+4. Validates environment (git status, branch)
+5. Executes implementation step-by-step
+6. Validates changes incrementally
+7. Provides testing instructions
+8. Generates implementation summary
+
+**Example**:
+```
+/implement #42
+```
+
+**Output**:
+- Step-by-step implementation with explanations
+- Code changes across relevant files
+- Incremental validation and error checking
+- Testing instructions for WoW client
+- Implementation summary with commit message
+- Documentation updates
+
+**Best combined with**: `/plan #42` first to create roadmap, then `/implement #42` to execute.
 
 ---
 
@@ -226,19 +267,23 @@ Different AI models have different strengths. This workflow system leverages the
 
 These prompts are designed to work together:
 
-**Typical Development Flow**:
+**Issue-Based Development Flow** (Recommended):
 ```
-/plan [feature]        → Get implementation roadmap
-[implement feature]    → Work through the plan
-/refactor [changes]    → Clean up code structure (if needed)
-/review [files]        → Get feedback before committing
-/park                  → Save progress at end of session
+[Create issue]         → https://github.com/McTalian/Endeavoring/issues/new
+/plan #42              → Load issue, create implementation plan
+                       → Plan saved to .github/plans/issue-42.md
+/implement #42         → Load issue + plan, execute implementation
+                       → Work through phases with validation
+/review [files]        → Quality check before committing
+[commit & test]        → Commit with: "Implements #42: description"
+/park                  → Document completion
+
 ---
 [Next session]
 /resume [handoff]      → Pick up where you left off
 ```
 
-**Quick Iteration Flow**:
+**Quick Fix/Iteration Flow**:
 ```
 [implement changes]
 /review               → Quick quality check
@@ -263,10 +308,20 @@ These prompts are designed to work together:
 - **Don't skip the checkpoint** - you'll appreciate it if something goes wrong
 
 ### For `/plan`:
+- **Create issue first** - `/plan` requires a GitHub issue number
 - **Ask for planning early** - design before coding saves time
 - **Engage with questions** - the back-and-forth improves the plan
-- **Reference the plan** as you implement
-- **Update the plan** if you discover new requirements
+- **Plans are saved automatically** - to `.github/plans/issue-{number}.md`
+- **Reference the plan** during implementation
+- **Update the plan** if you discover new requirements during implementation
+
+### For `/implement`:
+- **Plan first** - run `/plan #42` before `/implement #42` for best results
+- **Works without plan** - can implement directly from issue if simple
+- **Watch for blockers** - workflow will pause and document if blocked
+- **Validate incrementally** - checks errors after each logical chunk
+- **Test thoroughly** - use `make watch` for rapid iteration in WoW client
+- **Keep issue updated** - workflow guides you to update issue with progress
 
 ### For `/park` and `/resume`:
 - **Park regularly** - at natural stopping points

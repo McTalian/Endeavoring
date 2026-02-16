@@ -151,7 +151,8 @@ See [Architecture](docs/architecture.md) for complete conventions, directory str
 
 **Workflows:**
 - `/refactor` - Complex multi-file refactoring with GPT-5.1-Codex-Max
-- `/plan` - Feature planning and design
+- `/plan #issue` - Feature planning from GitHub issue
+- `/implement #issue` - Issue-based implementation with plan integration
 - `/park` - Save session progress for handoff
 - `/resume` - Restore from parked session
 - `/review` - Code review

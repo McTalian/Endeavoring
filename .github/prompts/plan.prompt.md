@@ -1,14 +1,30 @@
 ---
 name: plan
-description: Collaboratively plan a new feature with technical design and implementation roadmap
-argument-hint: Feature name or description
+description: Plan a feature from a GitHub issue with technical design and implementation roadmap
+argument-hint: Issue number (e.g., #123)
 agent: agent
-tools: ['vscode', 'read', 'search', 'web', 'agent', 'vscode.mermaid-chat-features/renderMermaidDiagram']
+tools: ['vscode', 'read', 'agent', 'search', 'web', 'vscode.mermaid-chat-features/renderMermaidDiagram', 'github.vscode-pull-request-github/issue_fetch']
 ---
 
-# Plan - Feature Planning Session
+# Plan - Feature Planning from GitHub Issue
 
-You are collaborating with the user to plan a new feature or significant enhancement. Your goal is to think through the full scope, identify dependencies, consider edge cases, and create an actionable roadmap.
+You are collaborating with the user to plan a feature from a GitHub issue. Your goal is to transform the issue requirements into a detailed technical plan with clear implementation phases.
+
+## Input Requirement
+
+**This workflow requires a GitHub issue number.**
+
+- Extract issue number from formats like: `#123`, `123`, `issue 123`
+- If no issue number provided, ask: "Please provide an issue number to plan (e.g., `/plan #123`). Create an issue first at https://github.com/McTalian/Endeavoring/issues/new/choose"
+
+**Fetch the issue**:
+1. Call: `github-pull-request_issue_fetch(owner: "McTalian", repo: "Endeavoring", issue_number: 123)`
+2. Extract key information:
+   - Issue title and description
+   - Labels (complexity, priority indicators)
+   - Any linked PRs or related issues
+   - Discussion context from comments
+3. Acknowledge: "Planning from issue #123: [title]"
 
 ## Planning Process
 
@@ -218,12 +234,21 @@ Present the complete plan in sections:
 2. [What comes after]
 ```
 
-### Step 9: Offer to Update Development Status
+### Step 9: Save and Update Documentation
 
-Ask if the user wants you to:
+**Save the plan**:
+- Save the plan as `.github/plans/issue-{number}.md`
+- This allows `/implement #{number}` to reference the plan automatically
+- Include issue number and link in the plan document header
+
+**Update project documentation**:
 - Add this plan to [development-status.md](../docs/development-status.md)
 - Create a new phase or update existing phase
 - Add tasks to the roadmap
+
+**Update the issue** (optional):
+- Post a comment with a link to the saved plan
+- Update labels if complexity estimate changed during planning
 
 ## Tone & Approach
 
@@ -261,13 +286,18 @@ Midnight is new - APIs might change:
 - Phase 4 (Polish) is upcoming
 - How does this feature fit into the roadmap?
 
-## Example Feature Planning
+## Example Usage
 
-Good candidates for `/plan`:
-- **Leaderboard** (mentioned in Features Under Consideration)
-- **Task Sorting/Filtering** (mentioned in Features Under Consideration)
-- **Options UI** (Phase 2 - already identified but needs detailed planning)
-- **Activity Timeline/History** (potential enhancement)
-- **Neighborhood Stats Dashboard** (potential enhancement)
+**From GitHub issue**:
+```
+/plan #42
+```
+→ Loads issue #42, creates detailed implementation plan, saves to `.github/plans/issue-42.md`
+
+**Typical workflow**:
+1. Create issue: https://github.com/McTalian/Endeavoring/issues/new/choose
+2. Run `/plan #123` to create technical design
+3. Plan is saved for `/implement #123` to reference
+4. Update development-status.md with planned work
 
 The output should give you confidence to start implementing, knowing you've thought through the major considerations and have a clear roadmap.
