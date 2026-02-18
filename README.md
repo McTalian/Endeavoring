@@ -66,6 +66,10 @@ Install directly through your favorite addon manager:
 
 Found a bug? Open an issue on GitHub or ping me on Discord. Include any error messages from BugSnag/BugGrabber or `/console scriptErrors 1` if you can.
 
+## Other Great Endeavor Addons
+
+**[Vamooses Endeavors](https://www.curseforge.com/wow/addons/vamooses-endeavors)** has a many of the same features with a different look and feel. Major props to the House XP cap tracking. There's no API for that and they went through the effort of coming up with a heuristic to track it based on task completions, rewards, and diminishing returns calculations. If that feature is important to you, check it out! I started my work on Endeavoring before I found out about Vamoose's addon know that someone would beat me to the punch, but I decided to release Endeavoring anyways since I learned a lot building it and I think the profile/player/account sync and activity log features are unique and valuable additions to the addon community.
+
 ## Attribution
 
 Addon icon by [Delapouite](https://delapouite.com), licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Modified and downloaded via [game-icons.net](https://game-icons.net).
