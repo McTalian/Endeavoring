@@ -1,0 +1,9 @@
+-- Busted configuration file.
+-- https://lunarmodules.github.io/busted/#configuration-file
+return {
+	default = {
+		-- Runs once before the whole suite, setting up Lua compat shims
+		-- and WoW API stubs that every spec needs.
+		helper = "Endeavoring_spec/_mocks/helper.lua",
+	},
+}

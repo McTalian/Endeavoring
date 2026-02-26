@@ -1,2 +1,6 @@
 .release
 node_modules
+
+*.out
+
+luacov-html
