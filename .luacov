@@ -1,0 +1,12 @@
+statsfile = "luacov.stats.out"
+reporter = "luacov_html"
+includeuntestedfiles = true
+
+html = {
+	outputDirectory = "luacov-html",
+	projectName = "Endeavoring",
+}
+exclude = { }
+include = {
+    "^Endeavoring%/.+$",
+}
