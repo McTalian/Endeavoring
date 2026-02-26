@@ -44,6 +44,56 @@ local ERROR = ns.Constants.PREFIX_ERROR
 local ADDON_PREFIX = "Ndvrng"
 local MSG_TYPE = ns.MSG_TYPE  -- Shared message type enum
 
+--[[
+Forward Compatibility: Short Wire Keys
+
+A future version will switch outbound messages from verbose CBOR keys
+(e.g. "battleTag") to short keys (e.g. "b") to reclaim wire bytes.
+This mapping lets v1.0.1+ clients already understand the short format,
+so by the time the sender side is changed, all reasonably-updated
+clients will seamlessly handle both old and new payloads.
+
+To activate short keys on the SENDER side (future work):
+  1. Update AddonMessages.BuildMessage / Coordinator / Gossip to emit short keys
+  2. Remove verbose keys from outbound payloads
+  3. This normalization layer keeps the receiver side working unchanged
+--]]
+local SHORT_KEY_MAP = {
+	-- Message envelope
+	t  = "type",
+	-- Profile identifiers
+	b  = "battleTag",
+	a  = "alias",
+	-- Timestamps
+	cu = "charsUpdatedAt",
+	au = "aliasUpdatedAt",
+	af = "afterTimestamp",
+	-- Character list
+	c  = "characters",
+	-- Character object fields
+	n  = "name",
+	r  = "realm",
+	d  = "addedAt",
+}
+
+--- Normalize message keys from short format to verbose format.
+--- Recursively walks tables so nested character objects are also normalized.
+--- Verbose keys pass through unchanged, so both formats are accepted.
+--- @param data any The decoded message data (or nested value)
+--- @return any normalized The data with verbose keys
+local function NormalizeKeys(data)
+	if type(data) ~= "table" then
+		return data
+	end
+
+	local normalized = {}
+	for key, value in pairs(data) do
+		local normalizedKey = (type(key) == "string" and SHORT_KEY_MAP[key]) or key
+		normalized[normalizedKey] = NormalizeKeys(value)
+	end
+	return normalized
+end
+
 --- Parse an encoded message and extract message type
 --- Message type is embedded in the CBOR payload
 --- @param encoded string The encoded message
@@ -61,6 +111,9 @@ local function ParseMessage(encoded)
 		DebugPrint(string.format("Failed to decode message: %s", err or "unknown error"), "ff0000")
 		return nil, nil
 	end
+
+	-- Normalize short keys to verbose keys (forward compatibility)
+	data = NormalizeKeys(data)
 	
 	-- Extract message type from decoded data
 	local messageType = data.type
