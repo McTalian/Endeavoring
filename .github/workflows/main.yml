@@ -47,8 +47,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # TODO: Add automated tests
-      # When tests are added, run them here
+      - uses: lewis6991/gh-actions-lua@01aab24c4de9555717b685f9b142a2abbe12ef14
+        with:
+          luaVersion: 5.4.4
+
+      - uses: leafo/gh-actions-luarocks@v4
+        with:
+          luaRocksVersion: 3.11.1
+
+      - name: Install luarock dependencies
+        run: luarocks make --local endeavoring-1-1.rockspec
+
+      - name: Run Tests
+        run: make test-ci
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luacov-html
+          path: luacov-html/
 
 
   release:
