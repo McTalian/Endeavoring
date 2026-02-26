@@ -39,7 +39,7 @@ local GUILD_ROSTER_MIN_INTERVAL = 60  -- Min seconds between roster-triggered ma
 local MANIFEST_DEBOUNCE_SECONDS = 2  -- Debounce time for manifest broadcasts (coalescing rapid events)
 local MANIFEST_HEARTBEAT_INTERVAL = 300  -- Send manifest every 5 minutes if no other activity
 local HEARTBEAT_TICKER_INTERVAL = 60  -- Check heartbeat every minute
-local CHARS_PER_MESSAGE = 5  -- Max characters to send in one CHARS_UPDATE message
+local CHARS_PER_MESSAGE = 4  -- Max characters to send in one CHARS_UPDATE message
 
 -- State
 local lastManifestTime = 0
