@@ -104,14 +104,14 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Development Status**: Beta Testing (released Feb 12)  
+**Development Status**: Released (v1.0.1 live)  
 **Recent Work**: 
-- **Feb 27**: Gossip Protocol v2 (issue #9) — Phases 1-3 complete on `issue-9` branch. Digest-based exchange replaces push-based gossip, reducing whisper messages from 3-15+ to 1 per MANIFEST. Short wire keys save ~30-50 bytes per message. Phase 4 (polish) remaining.
+- **Feb 27**: Gossip Protocol v2 (issue #9) — All 4 phases complete on `issue-9` branch. Digest-based exchange replaces push-based gossip, reducing whisper messages from 3-15+ to 1 per MANIFEST. Short wire keys save ~30-50 bytes per message. 33 unit tests passing. Ready for merge.
 - **Feb 14**: Experimental chest ready indicator - glowing icon when endeavor complete but chest unclaimed (untested until March)
 - **Feb 13**: v1.0.0 prep - updated distribution links, finalized packaging workflows, removed last TODO from codebase
 - **Feb 12**: Critical bug fix - resolved Housing Dashboard corruption on zone transitions; Added settings gear button to main frame
 
-**Next**: Gather beta feedback, validate chest indicator in March, release v1.0.0
+**Next**: Merge `issue-9` → `main`, release v1.1.0, validate chest indicator in March
 
 See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 
