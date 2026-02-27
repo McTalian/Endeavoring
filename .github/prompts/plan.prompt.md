@@ -3,7 +3,7 @@ name: plan
 description: Plan a feature from a GitHub issue with technical design and implementation roadmap
 argument-hint: Issue number (e.g., #123)
 agent: agent
-tools: ['vscode', 'read', 'agent', 'search', 'web', 'vscode.mermaid-chat-features/renderMermaidDiagram', 'github.vscode-pull-request-github/issue_fetch']
+tools: ['vscode', 'read', 'edit', 'agent', 'search', 'todo', 'web', 'vscode.mermaid-chat-features/renderMermaidDiagram', 'github.vscode-pull-request-github/issue_fetch']
 ---
 
 # Plan - Feature Planning from GitHub Issue
