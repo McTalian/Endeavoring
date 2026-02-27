@@ -32,9 +32,12 @@
   - Commands.lua updated for new gossip stats shape
   - Test mocks updated for new protocol
   - Files: Gossip.lua (major rewrite), Protocol.lua, Commands.lua, nsMocks.lua, Protocol_spec.lua
-- **Phase 4** 🚧: Polish & cleanup (not started)
-  - Remaining: backward compat verification, old tracking cleanup, gossip tracking pruning hook, additional unit tests for new message types, documentation updates
-- **All 13 unit tests passing**, TOC check clean, no lint errors
+- **Phase 4** ✅: Polish & cleanup
+  - Removed deprecated `MarkKnownProfile()`/`HasGossipedProfile()` stubs and their call sites
+  - Verified backward compatibility: old-style ALIAS_UPDATE/CHARS_UPDATE gossip from v1.0.x clients still processed correctly
+  - Added 20 unit tests for GOSSIP_DIGEST and GOSSIP_REQUEST handlers (13 for digest, 7 for request)
+  - Remaining: gossip tracking pruning hook (deferred — detecting BattleTag departure from guild is non-trivial)
+- **All 33 unit tests passing**, TOC check clean, no lint errors
 
 **Chest Ready Indicator - Experimental (Feb 14)** 🧪
 - **Feature**: Added glowing chest icon indicator when endeavor is complete but chest hasn't been looted
@@ -529,12 +532,11 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
    - Manifest debouncing and scheduling
    - Public API: `Init()`, `SendManifest()`, `SendCharsUpdate()`, `GetSyncStats()`
 
-4. **Gossip.lua** (196 → 227 lines)
-   - Opportunistic profile propagation
-   - Profile selection algorithm
-   - Per-session gossip tracking
+4. **Gossip.lua** (rewritten for v2 digest protocol)
+   - Digest-based profile propagation (replaces push-based gossip)
+   - Content-aware tracking via DB.gossipTracking (persists across sessions)
    - **Bidirectional correction**: `CorrectStaleAlias()`, `CorrectStaleChars()`
-   - Public API: `MarkKnownProfile()`, `SendProfilesToPlayer()`, `CorrectStaleAlias()`, `CorrectStaleChars()`, `GetStats()`
+   - Public API: `BuildDigest()`, `SendDigest()`, `SendProfile()`, `MarkCorrectionSent()`, `HasSentCorrection()`, `CorrectStaleAlias()`, `CorrectStaleChars()`, `GetStats()`
 
 5. **Sync → AddonMessages Rename** (162 lines, 81% reduction!)
    - Services/Sync.lua → Services/AddonMessages.lua
