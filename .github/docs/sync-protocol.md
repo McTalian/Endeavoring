@@ -9,7 +9,8 @@ The Endeavoring addon synchronizes player profiles (BattleTags, aliases, and cha
 **Phase 1**: ✅ Complete - Local database and character registration  
 **Phase 2**: 📋 Planned - Options UI  
 **Phase 3**: ✅ Complete - Direct sync protocol  
-**Phase 3.5**: ✅ Complete - Gossip protocol for profile propagation
+**Phase 3.5**: ✅ Complete - Gossip protocol for profile propagation  
+**Phase 3.6**: ✅ Complete - Gossip v2: Digest-based exchange + short wire keys (#9)
 
 ## Design Goals
 
@@ -350,65 +351,135 @@ Before accepting any update:
 /endeavoring sync request BattleTag#1234  -- Force request for specific player
 ```
 
-## Gossip Protocol (Phase 3.5 - Complete)
+## Gossip Protocol v2 — Digest-Based Exchange (Phase 3.6 - Complete)
 
-### Problem Solved
+### Problem Solved (v1)
 
-Direct sync (Phase 3) only works when both players are online simultaneously. If Player A updates while Player B is offline, Player B won't learn about it until:
-1. Player A logs back in, AND
-2. Player B happens to be online at the same time
+Direct sync (Phase 3) only works when both players are online simultaneously. The v1 gossip protocol (Phase 3.5) solved this by proactively sharing cached profiles on each MANIFEST, enabling transitive propagation.
 
-This breaks eventual consistency.
+### Problem with v1
 
-### Solution: Opportunistic Profile Sharing
+The v1 approach was "overly eager" — each MANIFEST triggered 3-15+ unsolicited whisper messages (ALIAS_UPDATE + CHARS_UPDATE per profile), causing `AddonMessageThrottle` errors in active guilds. Per-session tracking meant re-login spam, and there was no awareness of what the receiver already knew.
 
-When receiving a MANIFEST from Player B, we proactively share cached profiles we have about other players (Players C, D, E...) with Player B. This creates transitive profile propagation.
+### Solution: Digest-Based Handshake (v2)
 
-### Implementation Details
+Instead of pushing full profiles, we now send a compact **digest** summarizing what we know, and let the receiver request only what they need.
 
-**Gossip Trigger**: Every MANIFEST receipt triggers gossip check  
-**Selection Strategy**: Share up to 3 profiles per MANIFEST, prioritizing recently updated ones  
-**Tracking**: `lastGossip[senderBattleTag][profileBattleTag] = true` (per session, not persisted)  
-**Alt-Swapping Handled**: Tracks by BattleTag, so character switches don't trigger re-gossip  
-**Session Reset**: Gossip tracking clears on reload/relog (natural boundary)
+### New Message Types
 
-**Messages Used**: Reuses existing ALIAS_UPDATE and CHARS_UPDATE (no protocol changes!)  
-**Channel**: All gossip via WHISPER (doesn't spam guild)
+**GOSSIP_DIGEST** (`G`) — Compact summary of known third-party profiles
+```lua
+{
+  t = "G",        -- type: GOSSIP_DIGEST
+  e = {            -- entries array (max ~8, dynamically capped at 255 bytes)
+    { b = "BTag#1234", au = 1700000000, cu = 1700000100, cc = 3 },
+    { b = "BTag#5678", au = 1700000000, cu = 1700000200, cc = 5 },
+  }
+}
+```
 
-### Example Flow
+**GOSSIP_REQUEST** (`GR`) — Request specific profile data
+```lua
+{
+  t = "GR",        -- type: GOSSIP_REQUEST
+  b = "BTag#1234", -- requested profile
+  af = 1700000000  -- afterTimestamp (0 = full, >0 = delta)
+}
+```
+
+### Digest Flow
 
 ```
-Player C updates alias while you're offline
+Player A broadcasts MANIFEST to GUILD
   ↓
-Player A logs in, receives Player C's MANIFEST
+Player B receives MANIFEST
   ↓
-Player A caches Player C's profile
+Player B builds digest of cached profiles:
+  - Skip own profile and Player A's profile
+  - Compare local data against gossipTracking[A] (what we last told A)
+  - Include only profiles where our data is fresher
   ↓
-You log in later, broadcast MANIFEST
+Player B sends 1 GOSSIP_DIGEST message to Player A (WHISPER)
   ↓
-Player A receives your MANIFEST
+Player A processes each digest entry:
+  - Unknown profile? → Send GOSSIP_REQUEST (af=0)
+  - Digest has newer timestamps? → Send GOSSIP_REQUEST (af=localCu)
+  - We have fresher data? → Send correction (ALIAS_UPDATE / CHARS_UPDATE)
+  - Timestamps match, count mismatch? → Handle chunk drops
+  - All match? → No action
   ↓
-Player A gossips Player C's profile to you (via WHISPER)
+Player A also learns what B knows (updates gossipTracking[B])
   ↓
-You now have Player C's profile!
-  ↓
-Next time Player D logs in and you receive their MANIFEST
-  ↓
-You gossip Player C's profile to Player D
-  ↓
-Profile spreads through network transitively
+Player B receives GOSSIP_REQUESTs → responds with ALIAS_UPDATE + CHARS_UPDATE
 ```
+
+### Content-Aware Tracking
+
+Tracking persists across sessions in SavedVariables:
+
+```lua
+gossipTracking = {
+  ["TargetBTag#1234"] = {        -- What we last told this player
+    ["ProfileBTag#5678"] = {
+      au = 1700000000,           -- aliasUpdatedAt we communicated
+      cu = 1700000100,           -- charsUpdatedAt we communicated
+      cc = 3                     -- character count we communicated
+    }
+  }
+}
+```
+
+This means:
+- No re-gossip storm on relog (persisted tracking)
+- Profiles only re-included in digests when data actually changes
+- Receiver learning prevents ping-pong (we learn what the sender knows from their digest)
+
+### Correction Anti-Loop
+
+Two-layer protection against correction ping-pong:
+1. **Per-session flag**: `MarkCorrectionSent(B, X)` prevents re-correction within a session
+2. **Persisted tracking**: Corrections update `gossipTracking[B][X]` so the next digest won't re-include
+
+### Backward Compatibility
+
+- Old clients (v1.0.x) ignore GOSSIP_DIGEST/GOSSIP_REQUEST (unknown message types)
+- Old-style ALIAS_UPDATE/CHARS_UPDATE gossip handlers are preserved
+- Old clients still get direct sync via MANIFEST/REQUEST_CHARS
+- Upgrade path is natural — old clients still participate in the old gossip mesh
+
+### Wire Efficiency
+
+All messages use short wire keys (defined in `ns.SK`):
+
+| Verbose Key | Short Key | Used In |
+|-------------|-----------|---------|
+| type | t | All messages |
+| battleTag | b | All messages |
+| alias | a | MANIFEST, ALIAS_UPDATE |
+| charsUpdatedAt | cu | MANIFEST, CHARS_UPDATE, GOSSIP_DIGEST |
+| aliasUpdatedAt | au | MANIFEST, ALIAS_UPDATE, GOSSIP_DIGEST |
+| afterTimestamp | af | REQUEST_CHARS, GOSSIP_REQUEST |
+| characters | c | CHARS_UPDATE |
+| charsCount | cc | MANIFEST, GOSSIP_DIGEST |
+| name | n | Character objects |
+| realm | r | Character objects |
+| addedAt | d | Character objects |
+| entries | e | GOSSIP_DIGEST |
+
+### MANIFEST charsCount Comparison
+
+The MANIFEST now includes `charsCount` (cc). When `charsUpdatedAt` matches but counts differ, it indicates dropped chunks — triggers a full resync request (`af=0`).
 
 ### Configuration
 
 ```lua
-GOSSIP_MAX_PROFILES_PER_MANIFEST = 3  -- Bandwidth control
--- No cooldown - session-based only
+MAX_DIGEST_ENTRIES = 8    -- Starting cap, dynamically reduced if encoding exceeds 255 bytes
+MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit
 ```
 
 ### Debug Command
 
-`/endeavoring sync gossip` - Shows gossip statistics (players reached, profiles shared)
+`/endeavoring sync gossip` - Shows session correction stats
 
 ## Future Enhancements
 
