@@ -80,6 +80,8 @@ function nsMocks.CreateNS()
 		REQUEST_CHARS = "R",
 		ALIAS_UPDATE = "A",
 		CHARS_UPDATE = "C",
+		GOSSIP_DIGEST = "G",
+		GOSSIP_REQUEST = "GR",
 	}
 
 	-- Short wire keys (mirrors Bootstrap.lua)
@@ -147,10 +149,14 @@ function nsMocks.CreateNS()
 			}
 		end,
 		GetProfile = function() return nil end,
+		GetAllProfiles = function() return {} end,
+		GetCharacterCount = function() return 0 end,
 		UpdateProfileAlias = function() return true end,
 		AddCharactersToProfile = function() return true end,
 		GetCharactersAddedAfter = function() return {} end,
 		GetProfileCharactersAddedAfter = function() return {} end,
+		GetGossipTracking = function() return {} end,
+		UpdateGossipTracking = function() end,
 	}
 
 	-- PlayerInfo stub
@@ -178,8 +184,11 @@ function nsMocks.CreateNS()
 
 	-- Gossip stub
 	ns.Gossip = {
-		SendProfilesToPlayer = function() end,
+		SendDigest = function() end,
+		SendProfile = function() end,
 		MarkKnownProfile = function() end,
+		MarkCorrectionSent = function() end,
+		HasSentCorrection = function() return false end,
 		CorrectStaleAlias = function() end,
 		CorrectStaleChars = function() end,
 	}
