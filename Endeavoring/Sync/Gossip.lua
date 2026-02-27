@@ -9,6 +9,7 @@ ns.Gossip = Gossip
 -- Shortcuts
 local DebugPrint = ns.DebugPrint
 local ChatType = ns.AddonMessages.ChatType
+local SK = ns.SK
 
 --[[
 Gossip Protocol - Opportunistic Profile Propagation
@@ -133,9 +134,9 @@ function Gossip.SendProfilesToPlayer(targetBattleTag, targetCharacter)
 		
 		-- Send alias update
 		local aliasData = {
-			battleTag = battleTag,
-			alias = profile.alias,
-			aliasUpdatedAt = profile.aliasUpdatedAt,
+			[SK.battleTag] = battleTag,
+			[SK.alias] = profile.alias,
+			[SK.aliasUpdatedAt] = profile.aliasUpdatedAt,
 		}
 		local aliasMessage = ns.AddonMessages.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
 		if aliasMessage then
@@ -147,9 +148,9 @@ function Gossip.SendProfilesToPlayer(targetBattleTag, targetCharacter)
 		if profile.characters then
 			for _, char in pairs(profile.characters) do
 				table.insert(characters, {
-					name = char.name,
-					realm = char.realm or "",
-					addedAt = char.addedAt,
+					[SK.name] = char.name,
+					[SK.realm] = char.realm or "",
+					[SK.addedAt] = char.addedAt,
 				})
 			end
 		end
@@ -173,9 +174,9 @@ end
 --- @param correctTimestamp number The correct aliasUpdatedAt timestamp
 function Gossip.CorrectStaleAlias(sender, battleTag, correctAlias, correctTimestamp)
 	local aliasData = {
-		battleTag = battleTag,
-		alias = correctAlias,
-		aliasUpdatedAt = correctTimestamp,
+		[SK.battleTag] = battleTag,
+		[SK.alias] = correctAlias,
+		[SK.aliasUpdatedAt] = correctTimestamp,
 	}
 	local message = ns.AddonMessages.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
 	if message then
