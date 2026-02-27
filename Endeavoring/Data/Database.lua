@@ -19,6 +19,7 @@ local ns = select(2, ...)
 ---@field global table Global scope data
 ---@field global.myProfile Profile|nil Player's authoritative data (never synced from others)
 ---@field global.profiles table<string, Profile> Synced profiles from other players (keyed by BattleTag)
+---@field global.gossipTracking table<string, table<string, {au: number, cu: number, cc: number}>> Content-aware gossip tracking
 ---@field global.version number Schema version for migrations
 
 -- See .github/docs/database-schema.md for detailed schema documentation
@@ -34,6 +35,7 @@ local DEFAULT_DB = {
 		myProfile = nil,
 		profiles = {},
 		activityLogCache = {},  -- Keyed by neighborhoodGUID
+		gossipTracking = {},  -- Content-aware gossip tracking: [targetBTag][profileBTag] = {au, cu, cc}
 		verboseDebug = false,
 		settings = nil,  -- User preferences
 		lastSelectedTab = nil,  -- Remember last tab (1=Tasks, 2=Leaderboard, 3=Activity)
@@ -69,6 +71,10 @@ function DB.Init()
 		EndeavoringDB.global.activityLogCache = {}
 	end
 	
+	if not EndeavoringDB.global.gossipTracking then
+		EndeavoringDB.global.gossipTracking = {}
+	end
+
 	-- myProfile will be initialized on first character login
 end
 
@@ -553,6 +559,67 @@ function DB.ClearActivityLogCache(neighborhoodGUID)
 	else
 		EndeavoringDB.global.activityLogCache = {}
 	end
+end
+
+-- =============================================================================
+-- Gossip Tracking
+-- =============================================================================
+
+--- Get gossip tracking data for a specific target (what we've told them about)
+--- @param targetBattleTag string The BattleTag of the player we gossiped to
+--- @return table<string, {au: number, cu: number, cc: number}> tracking Profile tracking data, or empty table
+function DB.GetGossipTracking(targetBattleTag)
+	if not targetBattleTag then
+		return {}
+	end
+
+	local tracking = EndeavoringDB.global.gossipTracking
+	return tracking[targetBattleTag] or {}
+end
+
+--- Update gossip tracking for a target+profile pair (record what we told them)
+--- @param targetBattleTag string The BattleTag of the player we gossiped to
+--- @param profileBattleTag string The BattleTag of the profile we communicated
+--- @param au number The aliasUpdatedAt timestamp we communicated
+--- @param cu number The charsUpdatedAt timestamp we communicated
+--- @param cc number The character count we communicated
+function DB.UpdateGossipTracking(targetBattleTag, profileBattleTag, au, cu, cc)
+	if not targetBattleTag or not profileBattleTag then
+		return
+	end
+
+	local tracking = EndeavoringDB.global.gossipTracking
+	if not tracking[targetBattleTag] then
+		tracking[targetBattleTag] = {}
+	end
+
+	tracking[targetBattleTag][profileBattleTag] = {
+		au = au or 0,
+		cu = cu or 0,
+		cc = cc or 0,
+	}
+end
+
+--- Prune gossip tracking entries for targets not in the provided set
+--- Removes tracking data for players who are no longer in the guild roster
+--- @param validBattleTags table<string, boolean> Set of BattleTags to keep (value is truthy)
+--- @return number removed The number of target entries pruned
+function DB.PruneGossipTracking(validBattleTags)
+	if not validBattleTags then
+		return 0
+	end
+
+	local tracking = EndeavoringDB.global.gossipTracking
+	local removed = 0
+
+	for targetBTag in pairs(tracking) do
+		if not validBattleTags[targetBTag] then
+			tracking[targetBTag] = nil
+			removed = removed + 1
+		end
+	end
+
+	return removed
 end
 
 -- =============================================================================

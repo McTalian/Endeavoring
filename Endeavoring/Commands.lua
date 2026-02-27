@@ -89,14 +89,13 @@ end
 --- Handle sync gossip command - show gossip statistics
 local function HandleSyncGossip()
 	local stats = ns.Gossip.GetStats()
-	print(INFO .. " === Gossip Statistics ===")
-	print(string.format("  Total players gossiped to: %d", stats.totalPlayers))
-	print(string.format("  Total gossips sent: %d", stats.totalGossips))
-	
-	if stats.totalPlayers > 0 then
-		print("  Profiles gossiped by player:")
-		for battleTag, profiles in pairs(stats.gossipByPlayer) do
-			print(string.format("    %s: %d profile(s)", battleTag, profiles))
+	print(INFO .. " === Gossip Statistics (Session) ===")
+	print(string.format("  Corrections sent this session: %d", stats.totalCorrections))
+
+	if stats.totalCorrections > 0 then
+		print("  Corrections by player:")
+		for battleTag, count in pairs(stats.correctionsByPlayer) do
+			print(string.format("    %s: %d correction(s)", battleTag, count))
 		end
 	end
 end

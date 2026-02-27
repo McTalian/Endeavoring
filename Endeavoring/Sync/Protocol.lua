@@ -150,6 +150,7 @@ local function HandleManifest(sender, data)
 	local alias = data.alias
 	local charsUpdatedAt = data.charsUpdatedAt
 	local aliasUpdatedAt = data.aliasUpdatedAt
+	local charsCount = data.charsCount  -- May be nil from old clients
 	
 	-- Validate message data
 	if not ValidateBattleTag(battleTag) then
@@ -186,6 +187,15 @@ local function HandleManifest(sender, data)
 		if charsUpdatedAt > (cachedProfile.charsUpdatedAt or 0) then
 			needsChars = true
 			afterTimestamp = cachedProfile.charsUpdatedAt or 0
+		elseif charsCount and charsUpdatedAt == (cachedProfile.charsUpdatedAt or 0) then
+			-- Same timestamp but check character count for chunk drop detection
+			local localCount = ns.DB.GetCharacterCount(cachedProfile)
+			if charsCount > localCount then
+				-- They have more characters — we lost chunks, request full resync
+				DebugPrint(string.format("MANIFEST cc mismatch for %s: manifest=%d, local=%d — requesting full resync", battleTag, charsCount, localCount))
+				needsChars = true
+				afterTimestamp = 0
+			end
 		end
 	end
 	
@@ -202,8 +212,8 @@ local function HandleManifest(sender, data)
 		end
 	end
 	
-	-- Gossip Protocol
-	ns.Gossip.SendProfilesToPlayer(battleTag, sender)
+	-- Gossip Protocol: send digest instead of unsolicited profiles
+	ns.Gossip.SendDigest(battleTag, sender)
 end
 
 --- Handle incoming REQUEST_CHARS message (CBOR format)
@@ -380,6 +390,212 @@ local function HandleCharsUpdate(sender, data)
 	end
 end
 
+--- Handle incoming GOSSIP_DIGEST message
+--- Compares each entry against local cache and either requests missing data,
+--- sends corrections for stale data, or does nothing if timestamps match.
+--- Also learns the sender's knowledge state to avoid redundant future digests.
+--- @param sender string The sender's character name
+--- @param data table The decoded message data
+local function HandleGossipDigest(sender, data)
+	if not data then
+		return
+	end
+
+	local entries = data.entries
+	if not entries or type(entries) ~= "table" or #entries == 0 then
+		return
+	end
+
+	-- Identify sender's BattleTag for tracking
+	local senderBattleTag = ns.CharacterCache.FindBattleTag(sender)
+	if not senderBattleTag then
+		DebugPrint(string.format("GOSSIP_DIGEST from %s: cannot identify sender BattleTag, ignoring", sender), "ff8800")
+		return
+	end
+
+	local myBattleTag = ns.DB.GetMyBattleTag()
+
+	DebugPrint(string.format("Processing GOSSIP_DIGEST from %s (%s) with %d entries", sender, senderBattleTag, #entries))
+
+	for _, entry in ipairs(entries) do
+		local profileBTag = entry.battleTag
+		local digestAu = entry.aliasUpdatedAt or 0
+		local digestCu = entry.charsUpdatedAt or 0
+		local digestCc = entry.charsCount or 0
+
+		if not profileBTag or not ValidateBattleTag(profileBTag) then
+			DebugPrint("GOSSIP_DIGEST entry missing or invalid battleTag, skipping", "ff8800")
+		elseif profileBTag == myBattleTag then
+			-- Skip entries about us — we're the authority on our own data
+			DebugPrint(string.format("  Skipping entry about ourselves (%s)", profileBTag))
+		else
+			local localProfile = ns.DB.GetProfile(profileBTag)
+
+			if not localProfile then
+				-- Profile unknown to us — request full data
+				DebugPrint(string.format("  %s: unknown profile, requesting full data", profileBTag))
+				local requestData = {
+					[SK.battleTag] = profileBTag,
+					[SK.afterTimestamp] = 0,
+				}
+				local message = ns.AddonMessages.BuildMessage(MSG_TYPE.GOSSIP_REQUEST, requestData)
+				if message then
+					ns.AddonMessages.SendMessage(message, ChatType.Whisper, sender)
+				end
+			else
+				local localAu = localProfile.aliasUpdatedAt or 0
+				local localCu = localProfile.charsUpdatedAt or 0
+				local localCc = ns.DB.GetCharacterCount(localProfile)
+
+				-- Case 1: Digest has newer data — request it
+				if digestCu > localCu then
+					-- Request delta characters (only those added after our timestamp)
+					DebugPrint(string.format("  %s: digest cu=%d > local cu=%d, requesting delta", profileBTag, digestCu, localCu))
+					local requestData = {
+						[SK.battleTag] = profileBTag,
+						[SK.afterTimestamp] = localCu,
+					}
+					local message = ns.AddonMessages.BuildMessage(MSG_TYPE.GOSSIP_REQUEST, requestData)
+					if message then
+						ns.AddonMessages.SendMessage(message, ChatType.Whisper, sender)
+					end
+				elseif digestAu > localAu then
+					-- They have a newer alias — request full profile to get it
+					DebugPrint(string.format("  %s: digest au=%d > local au=%d, requesting full", profileBTag, digestAu, localAu))
+					local requestData = {
+						[SK.battleTag] = profileBTag,
+						[SK.afterTimestamp] = 0,
+					}
+					local message = ns.AddonMessages.BuildMessage(MSG_TYPE.GOSSIP_REQUEST, requestData)
+					if message then
+						ns.AddonMessages.SendMessage(message, ChatType.Whisper, sender)
+					end
+				elseif digestCu == localCu and digestCc > localCc then
+					-- Same timestamp but they have more chars — we lost chunks
+					DebugPrint(string.format("  %s: same cu but digest cc=%d > local cc=%d, requesting full", profileBTag, digestCc, localCc))
+					local requestData = {
+						[SK.battleTag] = profileBTag,
+						[SK.afterTimestamp] = 0,
+					}
+					local message = ns.AddonMessages.BuildMessage(MSG_TYPE.GOSSIP_REQUEST, requestData)
+					if message then
+						ns.AddonMessages.SendMessage(message, ChatType.Whisper, sender)
+					end
+
+				-- Case 2: We have fresher data — send corrections
+				elseif localAu > digestAu and not ns.Gossip.HasSentCorrection(senderBattleTag, profileBTag) then
+					DebugPrint(string.format("  %s: local au=%d > digest au=%d, sending alias correction", profileBTag, localAu, digestAu))
+					ns.Gossip.CorrectStaleAlias(sender, profileBTag, localProfile.alias, localAu)
+					ns.Gossip.MarkCorrectionSent(senderBattleTag, profileBTag)
+					-- Update tracking with corrected values
+					ns.DB.UpdateGossipTracking(senderBattleTag, profileBTag, localAu, math.max(localCu, digestCu), math.max(localCc, digestCc))
+				elseif localCu > digestCu and not ns.Gossip.HasSentCorrection(senderBattleTag, profileBTag) then
+					DebugPrint(string.format("  %s: local cu=%d > digest cu=%d, sending chars correction", profileBTag, localCu, digestCu))
+					ns.Gossip.CorrectStaleChars(sender, profileBTag, localCu, digestCu)
+					ns.Gossip.MarkCorrectionSent(senderBattleTag, profileBTag)
+					-- Update tracking with corrected values
+					ns.DB.UpdateGossipTracking(senderBattleTag, profileBTag, math.max(localAu, digestAu), localCu, localCc)
+				elseif localCu == digestCu and localCc > digestCc and not ns.Gossip.HasSentCorrection(senderBattleTag, profileBTag) then
+					-- Same timestamp but we have more chars — they lost chunks, send all
+					DebugPrint(string.format("  %s: same cu but local cc=%d > digest cc=%d, sending full chars", profileBTag, localCc, digestCc))
+					ns.Gossip.CorrectStaleChars(sender, profileBTag, localCu, 0)
+					ns.Gossip.MarkCorrectionSent(senderBattleTag, profileBTag)
+					ns.DB.UpdateGossipTracking(senderBattleTag, profileBTag, math.max(localAu, digestAu), localCu, localCc)
+				else
+					DebugPrint(string.format("  %s: timestamps match, no action needed", profileBTag))
+				end
+			end
+
+			-- Learn what the sender knows: update our tracking of their knowledge state
+			-- This prevents us from including this profile in future digests to them
+			-- (unless our data gets updated later)
+			local currentTracking = ns.DB.GetGossipTracking(senderBattleTag)
+			local tracked = currentTracking[profileBTag]
+			if not tracked or digestAu >= (tracked.au or 0) or digestCu >= (tracked.cu or 0) then
+				-- Only update if the digest shows same or newer knowledge
+				local bestAu = math.max(digestAu, tracked and tracked.au or 0)
+				local bestCu = math.max(digestCu, tracked and tracked.cu or 0)
+				local bestCc = digestCc  -- Use digest cc as their known count
+				ns.DB.UpdateGossipTracking(senderBattleTag, profileBTag, bestAu, bestCu, bestCc)
+			end
+		end
+	end
+end
+
+--- Handle incoming GOSSIP_REQUEST message
+--- Responds with the requested profile's data (ALIAS_UPDATE + CHARS_UPDATE).
+--- Supports delta requests via afterTimestamp.
+--- @param sender string The sender's character name
+--- @param data table The decoded message data
+local function HandleGossipRequest(sender, data)
+	if not data then
+		return
+	end
+
+	local profileBTag = data.battleTag
+	local afterTimestamp = data.afterTimestamp or 0
+
+	if not ValidateBattleTag(profileBTag) then
+		DebugPrint("GOSSIP_REQUEST missing or invalid battleTag", "ff8800")
+		return
+	end
+
+	if afterTimestamp ~= 0 and not ValidateTimestamp(afterTimestamp) then
+		DebugPrint("GOSSIP_REQUEST invalid afterTimestamp", "ff8800")
+		return
+	end
+
+	DebugPrint(string.format("Received GOSSIP_REQUEST from %s for %s (after=%d)", sender, profileBTag, afterTimestamp))
+
+	-- Check if the requested profile is our own — if so, send from myProfile
+	local myBattleTag = ns.DB.GetMyBattleTag()
+	if profileBTag == myBattleTag then
+		-- Send our own profile data
+		local myProfile = ns.DB.GetMyProfile()
+		if not myProfile then
+			return
+		end
+
+		local aliasData = {
+			[SK.battleTag] = myBattleTag,
+			[SK.alias] = myProfile.alias,
+			[SK.aliasUpdatedAt] = myProfile.aliasUpdatedAt,
+		}
+		local aliasMessage = ns.AddonMessages.BuildMessage(MSG_TYPE.ALIAS_UPDATE, aliasData)
+		if aliasMessage then
+			ns.AddonMessages.SendMessage(aliasMessage, ChatType.Whisper, sender)
+		end
+
+		local characters = ns.DB.GetCharactersAddedAfter(afterTimestamp)
+		if #characters > 0 then
+			local chars = {}
+			for _, char in ipairs(characters) do
+				table.insert(chars, {
+					[SK.name] = char.name,
+					[SK.realm] = char.realm or "",
+					[SK.addedAt] = char.addedAt,
+				})
+			end
+			ns.Coordinator.SendCharsUpdate(myBattleTag, chars, myProfile.charsUpdatedAt, ChatType.Whisper, sender)
+		end
+	else
+		-- Send cached third-party profile data
+		ns.Gossip.SendProfile(sender, profileBTag, afterTimestamp)
+	end
+
+	-- Update gossip tracking: the requester will now have this data
+	local senderBattleTag = ns.CharacterCache.FindBattleTag(sender)
+	if senderBattleTag then
+		local profile = ns.DB.GetProfile(profileBTag)
+		if profile then
+			ns.DB.UpdateGossipTracking(senderBattleTag, profileBTag,
+				profile.aliasUpdatedAt or 0,
+				profile.charsUpdatedAt or 0,
+				ns.DB.GetCharacterCount(profile))
+		end
+	end
+end
+
 --- Route message to appropriate handler
 --- @param messageType MessageType The message type
 --- @param sender string The sender's character name
@@ -396,6 +612,10 @@ local function RouteMessage(messageType, sender, data)
 		HandleAliasUpdate(sender, data)
 	elseif messageType == MSG_TYPE.CHARS_UPDATE then
 		HandleCharsUpdate(sender, data)
+	elseif messageType == MSG_TYPE.GOSSIP_DIGEST then
+		HandleGossipDigest(sender, data)
+	elseif messageType == MSG_TYPE.GOSSIP_REQUEST then
+		HandleGossipRequest(sender, data)
 	end
 end
 

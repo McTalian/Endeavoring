@@ -71,6 +71,8 @@ ns.MSG_TYPE = {
 	REQUEST_CHARS = "R",
 	ALIAS_UPDATE = "A",
 	CHARS_UPDATE = "C",
+	GOSSIP_DIGEST = "G",
+	GOSSIP_REQUEST = "GR",
 }
 
 --- Short wire keys for CBOR messages.
