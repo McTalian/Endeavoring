@@ -2,9 +2,9 @@
 
 **Last Updated**: February 27, 2026
 
-## Current Phase: Beta Testing 🧪
+## Current Phase: Released 🚀
 
-**Status**: Beta released to guild (Feb 12), working on gossip protocol v2 (#9)
+**Status**: v1.0.1 live, working on v1.1.0 (gossip protocol v2, #9)
 
 ## Recent Work 🎉
 
@@ -64,7 +64,7 @@
   - Protocol.lua: Added `--@non-alpha@` block to ignore own messages in release builds
   - Keeps message processing in alpha builds for testing/debugging
   - Minor performance optimization and cleaner debug output
-- **Status**: Ready for v1.0.0 release, awaiting beta feedback
+- **Status**: Released in v1.0.0
 
 **Critical Bug Fix + Settings Access (Feb 12 PM)** ✅
 - **Housing Dashboard Corruption Fix**: Resolved critical issue where Housing Dashboard showed blank Endeavors tab after zone transitions
