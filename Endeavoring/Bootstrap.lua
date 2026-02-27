@@ -73,6 +73,31 @@ ns.MSG_TYPE = {
 	CHARS_UPDATE = "C",
 }
 
+--- Short wire keys for CBOR messages.
+--- Use verbose names in code for readability; values are the short strings sent on the wire.
+--- Protocol.lua derives its SHORT_KEY_MAP (short→verbose) by inverting this table.
+---@enum ShortKey
+ns.SK = {
+	-- Message envelope
+	type = "t",
+	-- Profile identifiers
+	battleTag = "b",
+	alias = "a",
+	-- Timestamps
+	charsUpdatedAt = "cu",
+	aliasUpdatedAt = "au",
+	afterTimestamp = "af",
+	-- Character list
+	characters = "c",
+	charsCount = "cc",
+	-- Character object fields
+	name = "n",
+	realm = "r",
+	addedAt = "d",
+	-- Gossip digest
+	entries = "e",
+}
+
 ns.state = ns.state or {
 	tasksSortKey = ns.Constants.TASKS_SORT_POINTS,
 	tasksSortAsc = false,

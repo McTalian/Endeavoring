@@ -70,10 +70,12 @@ describe("Protocol", function()
 
 				local requestSent = false
 				ns.AddonMessages.BuildMessage = function(msgType, data)
-					assert.are.equal("R", msgType)
-					assert.are.equal(senderBTag, data.battleTag)
-					requestSent = true
-					return "encoded_request"
+					if msgType == "R" then
+						assert.are.equal(senderBTag, data.b)
+						requestSent = true
+						return "encoded_request"
+					end
+					return "encoded_message"
 				end
 				ns.AddonMessages.SendMessage = function() return true end
 
@@ -109,10 +111,12 @@ describe("Protocol", function()
 
 				local requestSent = false
 				ns.AddonMessages.BuildMessage = function(msgType, data)
-					assert.are.equal("R", msgType)
-					assert.are.equal(senderBTag, data.battleTag)
-					requestSent = true
-					return "encoded_request"
+					if msgType == "R" then
+						assert.are.equal(senderBTag, data.b)
+						requestSent = true
+						return "encoded_request"
+					end
+					return "encoded_message"
 				end
 				ns.AddonMessages.SendMessage = function() return true end
 
@@ -282,7 +286,7 @@ describe("Protocol", function()
 					charsUpdateSent = true
 					assert.are.equal(myBTag, bt)
 					assert.are.equal(1, #chars)
-					assert.are.equal("MyChar", chars[1].name)
+					assert.are.equal("MyChar", chars[1].n)
 					return true
 				end
 

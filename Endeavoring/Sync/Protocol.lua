@@ -39,42 +39,27 @@ ns.Protocol = Protocol
 local DebugPrint = ns.DebugPrint
 local ChatType = ns.AddonMessages.ChatType
 local ERROR = ns.Constants.PREFIX_ERROR
+local SK = ns.SK
 
 -- Constants
 local ADDON_PREFIX = "Ndvrng"
 local MSG_TYPE = ns.MSG_TYPE  -- Shared message type enum
 
 --[[
-Forward Compatibility: Short Wire Keys
+Short Wire Keys
 
-A future version will switch outbound messages from verbose CBOR keys
-(e.g. "battleTag") to short keys (e.g. "b") to reclaim wire bytes.
-This mapping lets v1.0.1+ clients already understand the short format,
-so by the time the sender side is changed, all reasonably-updated
-clients will seamlessly handle both old and new payloads.
+All outbound messages use short CBOR keys (e.g. "b" instead of "battleTag")
+to save wire bytes. The canonical mapping is defined in Bootstrap.lua as ns.SK
+(verbose → short). This table inverts it (short → verbose) so the receiver
+can normalize incoming messages back to verbose keys for internal use.
 
-To activate short keys on the SENDER side (future work):
-  1. Update AddonMessages.BuildMessage / Coordinator / Gossip to emit short keys
-  2. Remove verbose keys from outbound payloads
-  3. This normalization layer keeps the receiver side working unchanged
+Both short and verbose keys are accepted, ensuring backward compatibility
+with older clients that may still send verbose keys.
 --]]
-local SHORT_KEY_MAP = {
-	-- Message envelope
-	t  = "type",
-	-- Profile identifiers
-	b  = "battleTag",
-	a  = "alias",
-	-- Timestamps
-	cu = "charsUpdatedAt",
-	au = "aliasUpdatedAt",
-	af = "afterTimestamp",
-	-- Character list
-	c  = "characters",
-	-- Character object fields
-	n  = "name",
-	r  = "realm",
-	d  = "addedAt",
-}
+local SHORT_KEY_MAP = {}
+for verbose, short in pairs(ns.SK) do
+	SHORT_KEY_MAP[short] = verbose
+end
 
 --- Normalize message keys from short format to verbose format.
 --- Recursively walks tables so nested character objects are also normalized.
@@ -207,8 +192,8 @@ local function HandleManifest(sender, data)
 	-- Request characters if needed
 	if needsChars then
 		local requestData = {
-			battleTag = battleTag,
-			afterTimestamp = afterTimestamp,
+			[SK.battleTag] = battleTag,
+			[SK.afterTimestamp] = afterTimestamp,
 		}
 		local message = ns.AddonMessages.BuildMessage(MSG_TYPE.REQUEST_CHARS, requestData)
 		if message then
@@ -257,9 +242,9 @@ local function HandleRequestChars(sender, data)
 	local chars = {}
 	for _, char in ipairs(characters) do
 		table.insert(chars, {
-			name = char.name,
-			realm = char.realm or "",
-			addedAt = char.addedAt,
+			[SK.name] = char.name,
+			[SK.realm] = char.realm or "",
+			[SK.addedAt] = char.addedAt,
 		})
 	end
 	

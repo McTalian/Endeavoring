@@ -9,6 +9,7 @@ ns.Coordinator = Coordinator
 -- Shortcuts
 local DebugPrint = ns.DebugPrint
 local ChatType = ns.AddonMessages.ChatType
+local SK = ns.SK
 
 --[[
 Sync Coordinator - Orchestration & Timing
@@ -92,9 +93,9 @@ function Coordinator.SendCharsUpdate(battleTag, characters, charsUpdatedAt, chan
 		end
 		
 		local charsData = {
-			battleTag = battleTag,
-			characters = chunk,
-			charsUpdatedAt = charsUpdatedAt,
+			[SK.battleTag] = battleTag,
+			[SK.characters] = chunk,
+			[SK.charsUpdatedAt] = charsUpdatedAt,
 		}
 		
 		local message = ns.AddonMessages.BuildMessage(ns.MSG_TYPE.CHARS_UPDATE, charsData)
@@ -129,10 +130,11 @@ function Coordinator.SendManifest()
 	
 	-- Build MANIFEST message with CBOR payload
 	local data = {
-		battleTag = myProfile.battleTag,
-		alias = myProfile.alias,
-		charsUpdatedAt = myProfile.charsUpdatedAt,
-		aliasUpdatedAt = myProfile.aliasUpdatedAt,
+		[SK.battleTag] = myProfile.battleTag,
+		[SK.alias] = myProfile.alias,
+		[SK.charsUpdatedAt] = myProfile.charsUpdatedAt,
+		[SK.aliasUpdatedAt] = myProfile.aliasUpdatedAt,
+		[SK.charsCount] = ns.DB.GetCharacterCount(myProfile),
 	}
 	
 	local message = ns.AddonMessages.BuildMessage(ns.MSG_TYPE.MANIFEST, data)

@@ -86,8 +86,8 @@ end
 --- @param data table The message data
 --- @return string|nil encoded The encoded message or nil on failure
 function AddonMessages.BuildMessage(messageType, data)
-	-- Include message type in the payload
-	data.type = messageType
+	-- Include message type in the payload (short key; callers construct fresh tables)
+	data[ns.SK.type] = messageType
 	
 	local encoded, err = ns.MessageCodec.Encode(data)
 	if not encoded then

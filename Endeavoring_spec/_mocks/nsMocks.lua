@@ -82,6 +82,22 @@ function nsMocks.CreateNS()
 		CHARS_UPDATE = "C",
 	}
 
+	-- Short wire keys (mirrors Bootstrap.lua)
+	ns.SK = {
+		type = "t",
+		battleTag = "b",
+		alias = "a",
+		charsUpdatedAt = "cu",
+		aliasUpdatedAt = "au",
+		afterTimestamp = "af",
+		characters = "c",
+		charsCount = "cc",
+		name = "n",
+		realm = "r",
+		addedAt = "d",
+		entries = "e",
+	}
+
 	-- State
 	ns.state = {
 		tasksSortKey = ns.Constants.TASKS_SORT_POINTS,
