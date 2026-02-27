@@ -104,8 +104,9 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 ## Development Status
 
-**Current Phase**: Beta Testing (released Feb 12)  
+**Development Status**: Beta Testing (released Feb 12)  
 **Recent Work**: 
+- **Feb 27**: Gossip Protocol v2 (issue #9) — Phases 1-3 complete on `issue-9` branch. Digest-based exchange replaces push-based gossip, reducing whisper messages from 3-15+ to 1 per MANIFEST. Short wire keys save ~30-50 bytes per message. Phase 4 (polish) remaining.
 - **Feb 14**: Experimental chest ready indicator - glowing icon when endeavor complete but chest unclaimed (untested until March)
 - **Feb 13**: v1.0.0 prep - updated distribution links, finalized packaging workflows, removed last TODO from codebase
 - **Feb 12**: Critical bug fix - resolved Housing Dashboard corruption on zone transitions; Added settings gear button to main frame
@@ -126,9 +127,12 @@ The addon follows clear separation of concerns:
 - **Integrations/** - Hooks into Blizzard frames (HousingDashboard)
 
 **Sync Protocol Summary:**
-- MANIFEST broadcasts to GUILD on login/roster updates
+- MANIFEST broadcasts to GUILD on login/roster updates (includes charsCount for chunk drop detection)
 - REQUEST_CHARS and CHARS_UPDATE via WHISPER
 - Alias synced in MANIFEST (no separate message needed)
+- Gossip v2: GOSSIP_DIGEST (1 message) replaces push-based profile sharing (3-15+ messages)
+- GOSSIP_REQUEST for on-demand profile retrieval from digest entries
+- All messages use short wire keys (ns.SK) for bandwidth efficiency
 - Guild roster updates: 5s debounce + 2-10s random delay
 
 See [Architecture](docs/architecture.md) for complete conventions, directory structure, and coding standards.

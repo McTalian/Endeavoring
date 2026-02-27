@@ -1,12 +1,40 @@
 # Development Status
 
-**Last Updated**: February 14, 2026
+**Last Updated**: February 27, 2026
 
 ## Current Phase: Beta Testing 🧪
 
-**Status**: Beta released to guild (Feb 12), preparing for v1.0.0 release
+**Status**: Beta released to guild (Feb 12), working on gossip protocol v2 (#9)
 
 ## Recent Work 🎉
+
+**Gossip Protocol v2 — Digest-Based Exchange (Feb 27)** 🚧
+- **Issue**: [#9 - Overly eager gossip protocol](https://github.com/McTalian/Endeavoring/issues/9)
+- **Problem**: Old gossip sent 3-15+ unsolicited whisper messages per MANIFEST received, causing `AddonMessageThrottle` errors in active guilds
+- **Solution**: Replaced push-based gossip with digest-based handshake protocol
+- **Phase 1** ✅: Switched all senders to short wire keys (`ns.SK`), saving ~30-50 bytes per message
+  - Commit: `8d13dc0` on `issue-9` branch
+  - Files: Bootstrap.lua (SK table), Coordinator.lua, Gossip.lua, Protocol.lua (all senders)
+  - Fixed pre-existing test failures from short key migration (Protocol_spec.lua, nsMocks.lua)
+- **Phase 2** ✅: Database & tracking foundation
+  - New message types: `GOSSIP_DIGEST = "G"`, `GOSSIP_REQUEST = "GR"` in `ns.MSG_TYPE`
+  - New DB schema: `gossipTracking[targetBTag][profileBTag] = {au, cu, cc}` in SavedVariables
+  - New DB functions: `GetGossipTracking()`, `UpdateGossipTracking()`, `PruneGossipTracking()`
+  - Files: Bootstrap.lua, Database.lua
+- **Phase 3** ✅: Core digest protocol implementation
+  - `Gossip.BuildDigest()` — content-aware digest with dynamic 255-byte size cap
+  - `Gossip.SendDigest()` — replaces `SendProfilesToPlayer()`, sends 1 message instead of 3-15+
+  - `Gossip.SendProfile()` — single-profile sender for GOSSIP_REQUEST responses
+  - `HandleGossipDigest()` — compares entries, requests missing data, sends corrections, learns sender state
+  - `HandleGossipRequest()` — responds with requested profile data (supports delta via afterTimestamp)
+  - `HandleManifest()` updated: calls `SendDigest`, added `charsCount` comparison for chunk drop detection
+  - Per-session correction anti-loop: `MarkCorrectionSent()`/`HasSentCorrection()`
+  - Commands.lua updated for new gossip stats shape
+  - Test mocks updated for new protocol
+  - Files: Gossip.lua (major rewrite), Protocol.lua, Commands.lua, nsMocks.lua, Protocol_spec.lua
+- **Phase 4** 🚧: Polish & cleanup (not started)
+  - Remaining: backward compat verification, old tracking cleanup, gossip tracking pruning hook, additional unit tests for new message types, documentation updates
+- **All 13 unit tests passing**, TOC check clean, no lint errors
 
 **Chest Ready Indicator - Experimental (Feb 14)** 🧪
 - **Feature**: Added glowing chest icon indicator when endeavor is complete but chest hasn't been looted

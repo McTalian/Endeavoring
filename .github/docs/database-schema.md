@@ -57,6 +57,36 @@ EndeavoringDB = {
 }
 ```
 
+### gossipTracking (Phase 3.6 — Gossip v2)
+
+Content-aware gossip tracking — records what profile state we last communicated to each target player, persisted across sessions.
+
+```lua
+EndeavoringDB.global.gossipTracking = {
+  ["TargetBTag#1234"] = {              -- What we last told this player
+    ["ProfileBTag#5678"] = {
+      au = 1700000000,                 -- aliasUpdatedAt we communicated
+      cu = 1700000100,                 -- charsUpdatedAt we communicated
+      cc = 3                           -- character count we communicated
+    },
+    ["ProfileBTag#9999"] = {
+      au = 1700000000,
+      cu = 1700000200,
+      cc = 5
+    }
+  }
+}
+```
+
+**Access patterns:**
+- `DB.GetGossipTracking(targetBattleTag)` → `{ [profileBTag] = {au, cu, cc} }` or `{}`
+- `DB.UpdateGossipTracking(targetBTag, profileBTag, au, cu, cc)` — records what we told them
+- `DB.PruneGossipTracking(validBattleTags)` — removes entries for targets not in provided set
+
+**Size considerations:**
+- Bounded by (guild size × guild size) — small even for large guilds
+- Pruning removes entries for departed guild members (hook not yet wired)
+
 ## Timestamp Strategy
 
 The schema uses **separate timestamps** for different types of updates to enable efficient delta synchronization:
