@@ -186,7 +186,6 @@ function nsMocks.CreateNS()
 	ns.Gossip = {
 		SendDigest = function() end,
 		SendProfile = function() end,
-		MarkKnownProfile = function() end,
 		MarkCorrectionSent = function() end,
 		HasSentCorrection = function() return false end,
 		CorrectStaleAlias = function() end,

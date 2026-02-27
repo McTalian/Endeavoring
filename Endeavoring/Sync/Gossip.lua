@@ -79,25 +79,7 @@ function Gossip.HasSentCorrection(targetBattleTag, profileBattleTag)
 	return correctionsSent[targetBattleTag] and correctionsSent[targetBattleTag][profileBattleTag] or false
 end
 
---- Mark that a player knows about a profile (for gossip tracking)
---- @param knowerBattleTag string The BattleTag of the player who knows
---- @param profileBattleTag string The BattleTag of the profile they know about
---- @deprecated Use DB.UpdateGossipTracking instead; kept for backward compat with old-style gossip
-function Gossip.MarkKnownProfile(knowerBattleTag, profileBattleTag)
-	-- Legacy: still called by HandleAliasUpdate/HandleCharsUpdate for old-style gossip
-	-- In the new protocol, tracking is handled via DB.UpdateGossipTracking
-end
 
---- Check if we've already gossiped a profile to a player
---- @param targetBattleTag string The BattleTag we might gossip to
---- @param profileBattleTag string The profile BattleTag we might gossip
---- @return boolean hasGossiped Whether we've already gossiped this profile
---- @deprecated Use DB.GetGossipTracking instead; kept for backward compat
-function Gossip.HasGossipedProfile(targetBattleTag, profileBattleTag)
-	-- Legacy: check content-aware tracking in DB
-	local tracking = ns.DB.GetGossipTracking(targetBattleTag)
-	return tracking[profileBattleTag] ~= nil
-end
 
 --- Build a compact digest of known third-party profiles for a target player.
 --- Each entry contains timestamps and character count so the receiver can

@@ -296,12 +296,6 @@ local function HandleAliasUpdate(sender, data)
 	-- Check if we have this profile and if it's stale
 	local existingProfile = ns.DB.GetProfile(battleTag)
 	if existingProfile then
-		-- Track that sender knows about this profile
-		if senderBattleTag then
-			ns.Gossip.MarkKnownProfile(senderBattleTag, battleTag)
-			DebugPrint(string.format("Tracked: %s knows about %s", senderBattleTag, battleTag))
-		end
-		
 		-- Bidirectional correction: if sender has stale data, gossip back the correct version
 		if existingProfile.aliasUpdatedAt and existingProfile.aliasUpdatedAt > aliasUpdatedAt then
 			DebugPrint(string.format("Sender has stale alias for %s (theirs: %d, ours: %d), gossiping back", 
@@ -350,12 +344,6 @@ local function HandleCharsUpdate(sender, data)
 	-- Check if we have this profile
 	local existingProfile = ns.DB.GetProfile(battleTag)
 	if existingProfile then
-		-- Track that sender knows about this profile
-		if senderBattleTag then
-			ns.Gossip.MarkKnownProfile(senderBattleTag, battleTag)
-			DebugPrint(string.format("Tracked: %s knows about %s", senderBattleTag, battleTag))
-		end
-		
 		-- Bidirectional correction: if sender has stale data, gossip back the correct version
 		if existingProfile.charsUpdatedAt and existingProfile.charsUpdatedAt > senderCharsUpdatedAt then
 			DebugPrint(string.format("Sender has stale characters for %s (theirs: %d, ours: %d), gossiping back",
