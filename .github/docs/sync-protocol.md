@@ -371,7 +371,8 @@ Instead of pushing full profiles, we now send a compact **digest** summarizing w
 ```lua
 {
   t = "G",        -- type: GOSSIP_DIGEST
-  e = {            -- entries array (max ~8, dynamically capped at 255 bytes)
+  b = "Me#9999",   -- sender's BattleTag (for identification without CharacterCache)
+  e = {            -- entries array (max ~7, dynamically capped at 255 bytes)
     { b = "BTag#1234", au = 1700000000, cu = 1700000100, cc = 3 },
     { b = "BTag#5678", au = 1700000000, cu = 1700000200, cc = 5 },
   }

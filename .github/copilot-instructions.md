@@ -106,12 +106,13 @@ Always use forward slashes (`/`) for file paths regardless of OS. The WoW client
 
 **Development Status**: Released (v1.0.1 live)  
 **Recent Work**: 
-- **Feb 27**: Gossip Protocol v2 (issue #9) — All 4 phases complete on `issue-9` branch. Digest-based exchange replaces push-based gossip, reducing whisper messages from 3-15+ to 1 per MANIFEST. Short wire keys save ~30-50 bytes per message. 33 unit tests passing. Ready for merge.
+- **Feb 27 (PM)**: Test coverage sprint — 131 new tests across 4 spec files (Database 77, Gossip 26, ActivityLogCache 16, QuestRewards 12). Total: 176 tests, ~26.7% coverage. Added CopyTable/tContains WoW global stubs. Tuned guild roster update timing (debounce 8→20s, random delay 2-20→15-60s).
+- **Feb 27 (AM)**: Gossip Protocol v2 (issue #9) — All 4 phases complete. Digest-based exchange replaces push-based gossip, reducing whisper messages from 3-15+ to 1 per MANIFEST. Short wire keys save ~30-50 bytes per message. Bugfixes: sender BTag in digest payload, CharacterCache realm-stripping, heartbeat 5→15min.
 - **Feb 14**: Experimental chest ready indicator - glowing icon when endeavor complete but chest unclaimed (untested until March)
 - **Feb 13**: v1.0.0 prep - updated distribution links, finalized packaging workflows, removed last TODO from codebase
 - **Feb 12**: Critical bug fix - resolved Housing Dashboard corruption on zone transitions; Added settings gear button to main frame
 
-**Next**: Merge `issue-9` → `main`, release v1.1.0, validate chest indicator in March
+**Next**: Commit all changes, release v1.1.0, validate chest indicator in March
 
 See [Development Status](docs/development-status.md) for detailed progress tracking, recent work history, and roadmap.
 
@@ -133,7 +134,7 @@ The addon follows clear separation of concerns:
 - Gossip v2: GOSSIP_DIGEST (1 message) replaces push-based profile sharing (3-15+ messages)
 - GOSSIP_REQUEST for on-demand profile retrieval from digest entries
 - All messages use short wire keys (ns.SK) for bandwidth efficiency
-- Guild roster updates: 5s debounce + 2-10s random delay
+- Guild roster updates: 20s debounce + 15-60s random delay
 
 See [Architecture](docs/architecture.md) for complete conventions, directory structure, and coding standards.
 
