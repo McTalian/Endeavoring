@@ -127,7 +127,7 @@ local function isValidDestination(channel, target)
 		return false
 	end
 
-	if channel == ChatType.Officer and not ns.PlayerInfo.IsGuildOfficer() then
+	if channel == ChatType.Office and not ns.PlayerInfo.IsGuildOfficer() then
 		DebugPrint("Cannot send officer message - not a guild officer", "ff0000")
 		return false
 	end
