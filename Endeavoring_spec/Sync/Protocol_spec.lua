@@ -361,6 +361,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 3 },
 					},
@@ -413,6 +414,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 3 },
 					},
@@ -461,6 +463,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 0 },
 					},
@@ -508,6 +511,7 @@ describe("Protocol", function()
 				-- Same cu (1700000200) but digest has 3 chars vs our 1
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 3 },
 					},
@@ -559,6 +563,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 1 },
 					},
@@ -604,6 +609,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000100, cc = 2 },
 					},
@@ -648,6 +654,7 @@ describe("Protocol", function()
 				-- Same cu but we have 5 chars vs their 2
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 2 },
 					},
@@ -693,6 +700,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 3 },
 					},
@@ -722,6 +730,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = "Sender#9999",
 					e = {
 						{ b = myBTag, au = 1700000100, cu = 1700000200, cc = 5 },
 					},
@@ -732,10 +741,46 @@ describe("Protocol", function()
 				assert.is_false(messageSent, "Should not request or correct data about ourselves")
 			end)
 
-			it("should ignore digest when sender BattleTag is unresolvable", function()
+			it("should still process digest when BattleTag is in payload but CharacterCache returns nil", function()
 				local ns, Protocol = SetupProtocol()
 
-				-- FindBattleTag returns nil — can't identify sender
+				-- FindBattleTag returns nil — but payload includes sender BTag
+				ns.CharacterCache.FindBattleTag = function() return nil end
+
+				-- Profile from digest is unknown to us
+				local profileBTag = "Unknown#1111"
+				ns.DB.GetProfile = function() return nil end
+
+				local requestSent = false
+				local requestedBTag
+				ns.AddonMessages.BuildMessage = function(msgType, data)
+					if msgType == "GR" then
+						requestSent = true
+						requestedBTag = data.b
+						return "encoded_gossip_request"
+					end
+					return "encoded_message"
+				end
+				ns.AddonMessages.SendMessage = function() return true end
+
+				local payload = {
+					t = "G",
+					b = "Sender#9999",
+					e = {
+						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 3 },
+					},
+				}
+
+				SimulateMessage(ns, payload)
+
+				assert.is_true(requestSent, "GOSSIP_REQUEST should be sent even when CharacterCache returns nil")
+				assert.are.equal(profileBTag, requestedBTag)
+			end)
+
+			it("should ignore digest when BattleTag is not in payload and CharacterCache returns nil", function()
+				local ns, Protocol = SetupProtocol()
+
+				-- FindBattleTag returns nil and payload has no sender BTag
 				ns.CharacterCache.FindBattleTag = function() return nil end
 
 				local messageSent = false
@@ -770,6 +815,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {},
 				}
 
@@ -815,6 +861,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 3 },
 					},
@@ -865,6 +912,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profileBTag, au = 1700000100, cu = 1700000200, cc = 1 },
 					},
@@ -912,6 +960,7 @@ describe("Protocol", function()
 
 				local payload = {
 					t = "G",
+					b = senderBTag,
 					e = {
 						{ b = profile1, au = 1700000100, cu = 1700000200, cc = 3 },  -- match, no action
 						{ b = profile2, au = 1700000050, cu = 1700000050, cc = 1 },  -- unknown, request
