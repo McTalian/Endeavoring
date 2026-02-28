@@ -8,7 +8,19 @@
 
 ## Recent Work 🎉
 
-**Gossip Protocol v2 — Digest-Based Exchange (Feb 27)** 🚧
+**Test Coverage Sprint (Feb 27 PM)** ✅
+- **131 new tests** across 4 new spec files, total: **176 tests** (~26.7% line coverage)
+- New spec files:
+  - `Database_spec.lua` — 77 tests covering all 31 public functions (Init, RegisterCurrentCharacter, alias management, profile CRUD, sync protection, gossip tracking, activity log cache, settings)
+  - `Gossip_spec.lua` — 26 tests covering BuildDigest, SendDigest, SendProfile, correction tracking, CorrectStaleAlias/Chars, GetStats
+  - `ActivityLogCache_spec.lua` — 16 tests covering Get() priority chain, RefreshVisibleTabs, OnActivityLogUpdated
+  - `QuestRewards_spec.lua` — 12 tests covering GetCurrencyReward (incl pcall safety), GetCouponAmount, GetHouseXP
+- Added `CopyTable` and `tContains` WoW global stubs to WoWGlobals.lua
+- Tuned guild roster update timing: debounce 8→20s, random delay 2-20→15-60s (reduces chatter with digest protocol)
+- Fixed stale comment in Coordinator.lua header (said "5 minutes" for heartbeat, now says "15 minutes")
+- **Next idea**: Load-order test to cover module-level initialization code not wrapped in functions
+
+**Gossip Protocol v2 — Digest-Based Exchange (Feb 27 AM)** ✅
 - **Issue**: [#9 - Overly eager gossip protocol](https://github.com/McTalian/Endeavoring/issues/9)
 - **Problem**: Old gossip sent 3-15+ unsolicited whisper messages per MANIFEST received, causing `AddonMessageThrottle` errors in active guilds
 - **Solution**: Replaced push-based gossip with digest-based handshake protocol
@@ -37,7 +49,12 @@
   - Verified backward compatibility: old-style ALIAS_UPDATE/CHARS_UPDATE gossip from v1.0.x clients still processed correctly
   - Added 20 unit tests for GOSSIP_DIGEST and GOSSIP_REQUEST handlers (13 for digest, 7 for request)
   - Remaining: gossip tracking pruning hook (deferred — detecting BattleTag departure from guild is non-trivial)
-- **All 33 unit tests passing**, TOC check clean, no lint errors
+- **All 176 unit tests passing**, TOC check clean, no lint errors
+- **Bugfixes applied**:
+  - GOSSIP_DIGEST now includes sender BattleTag in payload (fixes "cannot identify sender" when CharacterCache hasn't cached the sender yet)
+  - CharacterCache.FindBattleTag strips realm suffix ("Name-Realm" → "Name" fallback) for cross-realm/connected realm lookups
+  - MAX_DIGEST_ENTRIES reduced from 8 to 7 (accounts for sender BTag in payload, saves wasted encode cycles)
+  - Heartbeat interval increased from 5 minutes to 15 minutes (less background chatter with digest protocol)
 
 **Chest Ready Indicator - Experimental (Feb 14)** 🧪
 - **Feature**: Added glowing chest icon indicator when endeavor is complete but chest hasn't been looted
@@ -521,12 +538,13 @@ Manual string concatenation was inefficient, difficult to extend, and risked exc
 2. **CharacterCache.lua** (79 lines)
    - O(1) character name → BattleTag lookups
    - Lazy cache rebuilding when stale
+   - Realm-stripping fallback for cross-realm lookups ("Name-Realm" → "Name")
    - Reusable for leaderboard feature
    - Public API: `FindBattleTag()`, `Invalidate()`, `GetStats()`
 
 3. **Coordinator.lua** (199 lines)
    - Orchestration and timing logic
-   - Heartbeat timer (5-minute idle manifests)
+   - Heartbeat timer (15-minute idle manifests)
    - Roster event throttling (max 1 per minute)
    - Character list chunking (5 per message)
    - Manifest debouncing and scheduling
