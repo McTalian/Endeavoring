@@ -46,7 +46,7 @@ corrections within a session. Corrections also update gossipTracking.
 --]]
 
 -- Configuration
-local MAX_DIGEST_ENTRIES = 8  -- Starting cap, dynamically reduced if encoding exceeds 255 bytes
+local MAX_DIGEST_ENTRIES = 7  -- Starting cap, dynamically reduced if encoding exceeds 255 bytes
 local MESSAGE_SIZE_LIMIT = 255  -- WoW API hard limit
 local MSG_TYPE = ns.MSG_TYPE  -- Shared message type enum
 
@@ -147,8 +147,10 @@ function Gossip.BuildDigest(targetBattleTag)
 	end
 
 	-- Dynamic size cap: encode and trim if over 255 bytes
+	-- Include our BattleTag so the receiver can identify us without CharacterCache
 	while #entries > 0 do
 		local digestData = {
+			[SK.battleTag] = myBattleTag,
 			[SK.entries] = entries,
 		}
 		local encoded = ns.AddonMessages.BuildMessage(MSG_TYPE.GOSSIP_DIGEST, digestData)
@@ -176,7 +178,9 @@ function Gossip.SendDigest(targetBattleTag, targetCharacter)
 		return
 	end
 
+	local myBattleTag = ns.DB.GetMyBattleTag()
 	local digestData = {
+		[SK.battleTag] = myBattleTag,
 		[SK.entries] = entries,
 	}
 	local message = ns.AddonMessages.BuildMessage(MSG_TYPE.GOSSIP_DIGEST, digestData)

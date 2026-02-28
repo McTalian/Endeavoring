@@ -394,8 +394,9 @@ local function HandleGossipDigest(sender, data)
 		return
 	end
 
-	-- Identify sender's BattleTag for tracking
-	local senderBattleTag = ns.CharacterCache.FindBattleTag(sender)
+	-- Identify sender's BattleTag — prefer the BattleTag included in the message,
+	-- fall back to CharacterCache lookup for older clients that don't include it
+	local senderBattleTag = data.battleTag or ns.CharacterCache.FindBattleTag(sender)
 	if not senderBattleTag then
 		DebugPrint(string.format("GOSSIP_DIGEST from %s: cannot identify sender BattleTag, ignoring", sender), "ff8800")
 		return
