@@ -91,14 +91,28 @@ local function Rebuild()
 end
 
 --- Look up a player's BattleTag by character name
---- @param characterName string The character name to search for
+--- Handles "Name-Realm" format from CHAT_MSG_ADDON by trying the full name
+--- first, then falling back to just the name portion (without realm suffix).
+--- @param characterName string The character name to search for (may include "-Realm")
 --- @return string|nil battleTag The BattleTag if found, nil otherwise
 function CharacterCache.FindBattleTag(characterName)
 	if CheckStaleness() ~= StaleType.FRESH then
 		Rebuild()
 	end
 	
-	return cache[characterName]
+	-- Try exact match first (handles same-realm or name-only lookups)
+	local result = cache[characterName]
+	if result then
+		return result
+	end
+
+	-- Strip realm suffix and retry (CHAT_MSG_ADDON sends "Name-Realm")
+	local nameOnly = characterName and characterName:match("^([^-]+)")
+	if nameOnly and nameOnly ~= characterName then
+		return cache[nameOnly]
+	end
+
+	return nil
 end
 
 --- Mark cache as stale (call when profile data changes)
